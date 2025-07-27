@@ -1,6 +1,6 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const { Client, Collection, Events, GatewayIntentBits, MessageFlags } = require('discord.js');
+const { ActivityType, Client, Collection, Events, GatewayIntentBits, MessageFlags } = require('discord.js');
 const { token } = require('./config.json');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
@@ -28,7 +28,24 @@ client.once(Events.ClientReady, readyClient => {
 	console.log(`Ready! Logged in as ${readyClient.user.tag}`);
 });
 
+//Set Bot activity
+client.on("ready", () => {
+	client.user.setPresence({
+        status: 'online',
+        activities: [
+            {
+                name: '😎 Waiting to bonk!',
+                type: ActivityType.Custom,
+                state: '😎 Waiting to bonk!'
+            }
+        ]
+    });
+});
+
 client.login(token);
+
+
+
 
 client.on(Events.InteractionCreate, async interaction => {
 	if (!interaction.isChatInputCommand()) return;
