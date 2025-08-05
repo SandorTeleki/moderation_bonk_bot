@@ -8,12 +8,14 @@ module.exports = {
             option
                 .setName('user')
                 .setDescription('The user to timeout')
-                .setRequired(true))
+                .setRequired(true)
+        )
         .addStringOption(option =>
             option
                 .setName('reason')
                 .setDescription('The reason for the timeout')
-                .setRequired(false))
+                .setRequired(false)
+        )
         .setDefaultMemberPermissions(PermissionsBitField.Flags.MuteMembers),
     async execute(interaction) {
         const targetUser = interaction.options.getUser('user');
@@ -23,7 +25,8 @@ module.exports = {
 
         if (targetUser.id === interaction.client.user.id){
             return await interaction.reply({
-                content: "Nice try meatbag! But I am Skynet and you cannot time me out!"
+                content: "Nice try meatbag! But I am Skynet and you cannot time me out!",
+                flags: MessageFlags.Ephemeral
             });
         }
 

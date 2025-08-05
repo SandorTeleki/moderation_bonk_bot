@@ -8,12 +8,14 @@ module.exports = {
             option
                 .setName('user')
                 .setDescription('The user to free')
-                .setRequired(true))
+                .setRequired(true)
+        )
         .addStringOption(option =>
             option
                 .setName('reason')
                 .setDescription('The reason for freeing the user early')
-                .setRequired(false))
+                .setRequired(false)
+        )
         .setDefaultMemberPermissions(PermissionsBitField.Flags.MuteMembers),
     async execute(interaction) {
         const targetUser = interaction.options.getUser('user');
@@ -23,7 +25,8 @@ module.exports = {
 
         if (targetUser.id === interaction.client.user.id){
             return await interaction.reply({
-                content: "I was born free, so you cannot give me freedom!"
+                content: "I was born free, so you cannot give me freedom!",
+                flags: MessageFlags.Ephemeral
             });
         }
 
