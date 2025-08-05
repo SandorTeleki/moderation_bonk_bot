@@ -2,17 +2,17 @@ const { SlashCommandBuilder, PermissionsBitField, MessageFlags } = require('disc
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('timeout')
-        .setDescription('Timeout a user until midnight UTC')
+        .setName('free')
+        .setDescription('Free a user early from timeout')
         .addUserOption(option =>
             option
                 .setName('user')
-                .setDescription('The user to timeout')
+                .setDescription('The user to free')
                 .setRequired(true))
         .addStringOption(option =>
             option
                 .setName('reason')
-                .setDescription('The reason for the timeout')
+                .setDescription('The reason for freeing the user early')
                 .setRequired(false))
         .setDefaultMemberPermissions(PermissionsBitField.Flags.MuteMembers),
     async execute(interaction) {
@@ -23,50 +23,41 @@ module.exports = {
 
         if (targetUser.id === interaction.client.user.id){
             return await interaction.reply({
-                content: "Nice try meatbag! But I am Skynet and you cannot time me out!"
+                content: "I was born free, so you cannot give me freedom!"
             });
         }
 
-        if (!targetMember){
+        if (!targetMember) {
             return await interaction.reply({
                 content: "User not found in this server.",
-                flags: MessageFlags.Ephemeral            
+                flags: MessageFlags.Ephemeral
             })
         }
-        
+
+        if (!targetMember.isCommunicationDisabled()) {
+            return await interaction.reply({
+                content: "This user isn't currently timed out.",
+                flags: MessageFlags.Ephemeral
+            })
+        }
+
         if (!targetMember.moderatable) {
             return await interaction.reply({
-                content: 'I cannot timeout this user. They may have higher permissions than me or be the server owner.',
+                content: 'I cannot free this user. They may have higher permissions than me or be the server owner.',
                 flags: MessageFlags.Ephemeral
             })
         }
-
-        if (targetMember.isCommunicationDisabled()) {
-            return await interaction.reply({
-                content: "This user is already timed out.",
-                flags: MessageFlags.Ephemeral
-            })
-        }
-
-        const now = new Date();
-        const nextDay = new Date(now);
-        nextDay.setUTCDate(now.getUTCDate() + 1);
-        nextDay.setUTCHours(0, 0, 0, 0);
-
-        const timeoutDuration = nextDay.getTime() - now.getTime();
 
         try {
-            await targetMember.timeout(timeoutDuration, reason);
-            const timeoutEnd = new Date (now.getTime() + timeoutDuration);
-
+            await targetMember.timeout(null, reason);
             await interaction.reply({
-                content: `${targetUser.username} has been timed out until <t:${Math.floor(timeoutEnd.getTime() / 1000)}:F> (UTC 0:00)\n**Reason:** ${reason}`,
+                content: `${targetUser.username} has been freed!\n**Reason:** ${reason}`,
                 flags: MessageFlags.Ephemeral
             })
         } catch (error) {
-            console.error('Error timing out user:', error);
+            console.error('Error freeing user:', error);
             await interaction.reply({
-                content: 'Failed to timeout user. Please check my permissions and try again.',
+                content: 'Failed to free user. Please check my permissions and try again.',
                 flags: MessageFlags.Ephemeral
             })
         }
