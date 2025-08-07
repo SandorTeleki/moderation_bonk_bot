@@ -4,17 +4,21 @@
   "description": "Moderation Bonk Bot",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "vitest --run",
+    "test:watch": "vitest",
     "deploy-commands": "node deploy-commands.js"
   },
   "author": "",
   "license": "ISC",
-    "dependencies": {
+  "dependencies": {
     "discord-reply": "^0.1.2",
     "discord.js": "^14.19.3",
-    "dotenv": "^16.5.0",
+    "dotenv": "^17.2.1",
     "gitignore": "^0.7.0",
     "sqlite3": "^5.1.7",
-    "undici": "^6.21.3"
+    "undici": "^7.13.0"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.4"
   }
 }

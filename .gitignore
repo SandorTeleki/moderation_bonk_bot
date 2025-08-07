@@ -1,3 +1,8 @@
 node_modules
+bot_data.db
+
+#Credentials
 config.json
 configOG.json
+
+
