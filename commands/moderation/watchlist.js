@@ -18,7 +18,7 @@ module.exports = {
                 .setRequired(false)
                 .setMaxLength(500)
         )
-        .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageGuild),
+        .setDefaultMemberPermissions(PermissionsBitField.Flags.MuteMembers),
 
     async execute(interaction) {
         const targetUser = interaction.options.getUser("user");
