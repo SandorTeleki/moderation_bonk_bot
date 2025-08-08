@@ -443,6 +443,97 @@ class Database {
   }
 
   /**
+   * Load all quota settings from database
+   * @returns {Promise<Map<string, number>>} - Map of guild IDs to quota limits
+   */
+  async loadAllQuotas() {
+    return new Promise((resolve, reject) => {
+      if (!this.db) {
+        reject(new Error("Database not initialized"));
+        return;
+      }
+
+      const query = "SELECT guild_id, daily_limit FROM quotas";
+      this.db.all(query, [], (err, rows) => {
+        if (err) {
+          console.error("Error loading all quotas:", err.message);
+          reject(err);
+          return;
+        }
+        
+        const quotaMap = new Map();
+        rows.forEach(row => {
+          quotaMap.set(row.guild_id, row.daily_limit);
+        });
+        
+        console.log(`Loaded ${quotaMap.size} quota settings from database`);
+        resolve(quotaMap);
+      });
+    });
+  }
+
+  /**
+   * Get database statistics for maintenance purposes
+   * @returns {Promise<Object>} - Object containing database statistics
+   */
+  async getDatabaseStats() {
+    return new Promise((resolve, reject) => {
+      if (!this.db) {
+        reject(new Error("Database not initialized"));
+        return;
+      }
+
+      const stats = {};
+      
+      // Get count of quotas
+      this.db.get("SELECT COUNT(*) as count FROM quotas", [], (err, row) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        stats.quotaCount = row.count;
+        
+        // Get count of daily messages
+        this.db.get("SELECT COUNT(*) as count FROM daily_messages", [], (err, row) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          stats.messageRecordCount = row.count;
+          
+          // Get count of logs
+          this.db.get("SELECT COUNT(*) as count FROM logs", [], (err, row) => {
+            if (err) {
+              reject(err);
+              return;
+            }
+            stats.logCount = row.count;
+            
+            // Get oldest message record date
+            this.db.get("SELECT MIN(date) as oldest_date FROM daily_messages", [], (err, row) => {
+              if (err) {
+                reject(err);
+                return;
+              }
+              stats.oldestMessageDate = row.oldest_date;
+              
+              // Get oldest log timestamp
+              this.db.get("SELECT MIN(timestamp) as oldest_timestamp FROM logs", [], (err, row) => {
+                if (err) {
+                  reject(err);
+                  return;
+                }
+                stats.oldestLogTimestamp = row.oldest_timestamp;
+                resolve(stats);
+              });
+            });
+          });
+        });
+      });
+    });
+  }
+
+  /**
    * Close database connection
    * @returns {Promise<void>}
    */

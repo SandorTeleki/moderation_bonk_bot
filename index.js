@@ -11,7 +11,7 @@ const {
 const { token } = require("./config.json");
 const database = require("./utils/database.js");
 
-const client = new Client({intents: [GatewayIntentBits.Guilds]});
+const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
 client.commands = new Collection();
 
@@ -39,16 +39,26 @@ for (const folder of commandFolders) {
 }
 
 client.once(Events.ClientReady, async (readyClient) => {
-	console.log("");
-	console.log("==================================================")
-	console.log(`=====Ready! Logged in as ${readyClient.user.tag}=====`);
-	console.log("==================================================")
-	console.log("");
+  console.log("");
+  console.log("==================================================");
+  console.log(`=====Ready! Logged in as ${readyClient.user.tag}=====`);
+  console.log("==================================================");
+  console.log("");
 
   // Initialize database
   try {
     await database.initializeDatabase();
     console.log("Database initialized successfully! 🥳");
+
+    // Load quota settings from database on startup
+    try {
+      const quotaMap = await database.loadAllQuotas();
+      console.log(
+        `Loaded quota settings for ${quotaMap.size} guilds from database`
+      );
+    } catch (error) {
+      console.error("Error loading quota settings on startup:", error);
+    }
   } catch (error) {
     console.error("Failed to initialize database 😭:", error);
     console.log("Bot cannot function without database - shutting down");
@@ -143,7 +153,6 @@ client.on(Events.MessageCreate, async (message) => {
   try {
     // Check if quota system is enabled for this guild
     const dailyLimit = await database.getQuota(message.guild.id);
-    
     if (!dailyLimit || dailyLimit === 0) return;
 
     // Check if user has the "watchlist" role
