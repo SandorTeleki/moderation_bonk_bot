@@ -30,12 +30,6 @@ module.exports = {
             // Log the quota change
             await database.logQuotaSet(guildId, moderatorId, oldQuota, limit);
 
-            // Update the in-memory cache for backwards compatibility
-            if (!interaction.client.messageQuotas) {
-                interaction.client.messageQuotas = new Map();
-            }
-            interaction.client.messageQuotas.set(guildId, limit);
-
             // Send appropriate response
             if (limit === 0) {
                 await interaction.reply({
@@ -52,14 +46,8 @@ module.exports = {
         } catch (error) {
             console.error('Error setting quota:', error);
             
-            // Fallback to in-memory storage if database fails
-            if (!interaction.client.messageQuotas) {
-                interaction.client.messageQuotas = new Map();
-            }
-            interaction.client.messageQuotas.set(guildId, limit);
-
             await interaction.reply({
-                content: `⚠️ Quota has been set to **${limit}** but there was an issue with database storage. The setting may not persist after bot restart.`,
+                content: `❌ There was an error setting the quota. Please try again later.`,
                 flags: MessageFlags.Ephemeral
             });
         }

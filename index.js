@@ -15,9 +15,7 @@ const client = new Client({intents: [GatewayIntentBits.Guilds]});
 
 client.commands = new Collection();
 
-// Initialize message tracking and quota systems
-client.messageQuotas = new Map(); // guildId -> daily limit
-client.messageCounts = new Map(); // `${guildId}-${userId}-${dateString}` -> count
+// Message tracking and quota systems are now handled by database
 
 const foldersPath = path.join(__dirname, "commands");
 const commandFolders = fs.readdirSync(foldersPath);
@@ -51,12 +49,10 @@ client.once(Events.ClientReady, async (readyClient) => {
   try {
     await database.initializeDatabase();
     console.log("Database initialized successfully! 🥳");
-
-    // Load existing quotas from database into memory for backwards compatibility
-    // This would require iterating through all guilds, but for now we'll load them on-demand
   } catch (error) {
     console.error("Failed to initialize database 😭:", error);
-    console.log("Bot will continue with in-memory storage only");
+    console.log("Bot cannot function without database - shutting down");
+    process.exit(1);
   }
 });
 
@@ -81,10 +77,6 @@ function getTodayUTC() {
     2,
     "0"
   )}-${String(now.getUTCDate()).padStart(2, "0")}`;
-}
-
-function getMessageCountKey(guildId, userId) {
-  return `${guildId}-${userId}-${getTodayUTC()}`;
 }
 
 function calculateTimeoutUntilMidnightUTC() {
@@ -150,16 +142,8 @@ client.on(Events.MessageCreate, async (message) => {
 
   try {
     // Check if quota system is enabled for this guild
-    let dailyLimit;
-    try {
-      // Try to get quota from database first
-      dailyLimit = await database.getQuota(message.guild.id);
-    } catch (error) {
-      // Fallback to in-memory storage if database fails
-      console.error("Database error, falling back to in-memory quota:", error);
-      dailyLimit = client.messageQuotas.get(message.guild.id) || 0;
-    }
-
+    const dailyLimit = await database.getQuota(message.guild.id);
+    
     if (!dailyLimit || dailyLimit === 0) return;
 
     // Check if user has the "watchlist" role
@@ -171,28 +155,13 @@ client.on(Events.MessageCreate, async (message) => {
     );
     if (!hasWatchlistRole) return;
 
-    // Track the message
+    // Track the message using database
     const today = getTodayUTC();
-    let newCount;
-
-    try {
-      // Try to use database for message tracking
-      newCount = await database.incrementMessageCount(
-        message.guild.id,
-        message.author.id,
-        today
-      );
-    } catch (error) {
-      // Fallback to in-memory tracking if database fails
-      console.error(
-        "Database error, falling back to in-memory tracking:",
-        error
-      );
-      const countKey = getMessageCountKey(message.guild.id, message.author.id);
-      const currentCount = client.messageCounts.get(countKey) || 0;
-      newCount = currentCount + 1;
-      client.messageCounts.set(countKey, newCount);
-    }
+    const newCount = await database.incrementMessageCount(
+      message.guild.id,
+      message.author.id,
+      today
+    );
 
     // Check if quota exceeded
     if (newCount > dailyLimit) {
