@@ -457,61 +457,6 @@ class Database {
   }
 
   /**
-   * Clean up old daily message records (older than specified days)
-   * @param {number} daysToKeep - Number of days to keep (default: 7)
-   * @returns {Promise<number>} - Number of records deleted
-   */
-  async cleanupOldMessages(daysToKeep = 7) {
-    return new Promise((resolve, reject) => {
-      if (!this.db) {
-        reject(new Error("Database not initialized"));
-        return;
-      }
-
-      const cutoffDate = new Date();
-      cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
-      const cutoffDateStr = cutoffDate.toISOString().split("T")[0]; // YYYY-MM-DD format
-
-      const query = "DELETE FROM daily_messages WHERE date < ?";
-      this.db.run(query, [cutoffDateStr], function (err) {
-        if (err) {
-          console.error("Error cleaning up old messages:", err.message);
-          reject(err);
-          return;
-        }
-        console.log(`Cleaned up ${this.changes} old daily message records`);
-        resolve(this.changes);
-      });
-    });
-  }
-
-  /**
-   * Clean up old log entries (older than specified days)
-   * @param {number} daysToKeep - Number of days to keep (default: 30)
-   * @returns {Promise<number>} - Number of records deleted
-   */
-  async cleanupOldLogs(daysToKeep = 30) {
-    return new Promise((resolve, reject) => {
-      if (!this.db) {
-        reject(new Error("Database not initialized"));
-        return;
-      }
-
-      const query =
-        'DELETE FROM logs WHERE timestamp < datetime("now", "-" || ? || " days")';
-      this.db.run(query, [daysToKeep], function (err) {
-        if (err) {
-          console.error("Error cleaning up old logs:", err.message);
-          reject(err);
-          return;
-        }
-        console.log(`Cleaned up ${this.changes} old log entries`);
-        resolve(this.changes);
-      });
-    });
-  }
-
-  /**
    * Load all quota settings from database
    * @returns {Promise<Map<string, number>>} - Map of guild IDs to quota limits
    */

@@ -11,7 +11,13 @@ const {
 const { token } = require("./config.json");
 const database = require("./utils/database.js");
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+  ],
+});
 
 client.commands = new Collection();
 
@@ -65,6 +71,49 @@ client.once(Events.ClientReady, async (readyClient) => {
       await createWatchlistRoles(readyClient);
     } catch (error) {
       console.error("Error creating watchlist roles on startup:", error);
+    }
+
+    // Set up periodic database integrity check (run every 24 hours)
+    setInterval(async () => {
+      try {
+        console.log("Running periodic database integrity check...");
+
+        // Check database integrity periodically
+        const isHealthy = await database.checkIntegrity();
+        if (!isHealthy) {
+          console.warn("Database integrity check failed");
+        } else {
+          console.log("Database integrity check passed");
+        }
+      } catch (error) {
+        console.error("Error during periodic database check:", error);
+
+        // Log the error for audit purposes
+        try {
+          await database.logAction(
+            "system",
+            "integrity_check_error",
+            null,
+            null,
+            { error: error.message, timestamp: new Date().toISOString() }
+          );
+        } catch (logError) {
+          console.error("Failed to log integrity check error:", logError);
+        }
+      }
+    }, 24 * 60 * 60 * 1000); // 24 hours in milliseconds
+
+    // Run initial database integrity check on startup
+    try {
+      console.log("Running initial database integrity check...");
+      const isHealthy = await database.checkIntegrity();
+      if (isHealthy) {
+        console.log("Initial database integrity check passed");
+      } else {
+        console.warn("Initial database integrity check failed");
+      }
+    } catch (error) {
+      console.error("Error during initial database integrity check:", error);
     }
   } catch (error) {
     console.error("Failed to initialize database 😭:", error);
@@ -131,38 +180,50 @@ async function timeoutUser(member, reason) {
 async function createWatchlistRoles(client) {
   const guilds = client.guilds.cache;
   console.log(`Checking watchlist roles in ${guilds.size} guilds...`);
-  
+
   for (const [guildId, guild] of guilds) {
     try {
       // Check if watchlist role exists
-      const existingRole = guild.roles.cache.find(role => role.name.toLowerCase() === 'watchlist');
-      
+      const existingRole = guild.roles.cache.find(
+        (role) => role.name.toLowerCase() === "watchlist"
+      );
+
       if (!existingRole) {
         // Create the watchlist role
         const watchlistRole = await guild.roles.create({
-          name: 'watchlist',
-          color: '#FF6B6B',
-          reason: 'Automatic watchlist role creation for quota system'
+          name: "watchlist",
+          color: "#FF6B6B",
+          reason: "Automatic watchlist role creation for quota system",
         });
-        console.log(`Created watchlist role in guild: ${guild.name} (${guildId})`);
-        
+        console.log(
+          `Created watchlist role in guild: ${guild.name} (${guildId})`
+        );
+
         // Log the role creation
         try {
           await database.logAction(
             guildId,
-            'watchlist_role_created',
+            "watchlist_role_created",
             null,
             null,
             { guildName: guild.name, automatic: true }
           );
         } catch (logError) {
-          console.error(`Error logging watchlist role creation for guild ${guildId}:`, logError);
+          console.error(
+            `Error logging watchlist role creation for guild ${guildId}:`,
+            logError
+          );
         }
       } else {
-        console.log(`Watchlist role already exists in guild: ${guild.name} (${guildId})`);
+        console.log(
+          `Watchlist role already exists in guild: ${guild.name} (${guildId})`
+        );
       }
     } catch (error) {
-      console.error(`Error creating watchlist role in guild ${guild.name} (${guildId}):`, error);
+      console.error(
+        `Error creating watchlist role in guild ${guild.name} (${guildId}):`,
+        error
+      );
     }
   }
 }
@@ -170,34 +231,44 @@ async function createWatchlistRoles(client) {
 // Handle bot joining new guilds
 client.on(Events.GuildCreate, async (guild) => {
   console.log(`Bot joined new guild: ${guild.name} (${guild.id})`);
-  
+
   try {
     // Create watchlist role in the new guild
-    const existingRole = guild.roles.cache.find(role => role.name.toLowerCase() === 'watchlist');
-    
+    const existingRole = guild.roles.cache.find(
+      (role) => role.name.toLowerCase() === "watchlist"
+    );
+
     if (!existingRole) {
       const watchlistRole = await guild.roles.create({
-        name: 'watchlist',
-        color: '#FF6B6B',
-        reason: 'Automatic watchlist role creation for quota system'
+        name: "watchlist",
+        color: "#FF6B6B",
+        reason: "Automatic watchlist role creation for quota system",
       });
-      console.log(`Created watchlist role in new guild: ${guild.name} (${guild.id})`);
-      
+      console.log(
+        `Created watchlist role in new guild: ${guild.name} (${guild.id})`
+      );
+
       // Log the role creation
       try {
         await database.logAction(
           guild.id,
-          'watchlist_role_created',
+          "watchlist_role_created",
           null,
           null,
           { guildName: guild.name, automatic: true, onJoin: true }
         );
       } catch (logError) {
-        console.error(`Error logging watchlist role creation for new guild ${guild.id}:`, logError);
+        console.error(
+          `Error logging watchlist role creation for new guild ${guild.id}:`,
+          logError
+        );
       }
     }
   } catch (error) {
-    console.error(`Error creating watchlist role in new guild ${guild.name} (${guild.id}):`, error);
+    console.error(
+      `Error creating watchlist role in new guild ${guild.name} (${guild.id}):`,
+      error
+    );
   }
 });
 
@@ -258,7 +329,7 @@ client.on(Events.MessageCreate, async (message) => {
       );
     });
 
-    // Check if quota exceeded
+    // Check if user has reached their quota limit (timeout immediately)
     if (newCount > dailyLimit) {
       // Only timeout if they can be moderated and aren't already timed out
       if (member.moderatable && !member.isCommunicationDisabled()) {
@@ -296,15 +367,15 @@ client.on(Events.MessageCreate, async (message) => {
             await database.executeWithRetry(async () => {
               return await database.logAction(
                 message.guild.id,
-                'timeout_failed',
+                "timeout_failed",
                 null,
                 message.author.id,
-                { 
-                  reason: 'Quota exceeded but timeout failed',
+                {
+                  reason: "Quota exceeded but timeout failed",
                   messageCount: newCount,
                   quotaLimit: dailyLimit,
                   moderatable: member.moderatable,
-                  alreadyTimedOut: member.isCommunicationDisabled()
+                  alreadyTimedOut: member.isCommunicationDisabled(),
                 }
               );
             });
@@ -314,21 +385,97 @@ client.on(Events.MessageCreate, async (message) => {
         }
       }
     }
+    // Check if user has reached their quota limit exactly (send warning and timeout on next message)
+    else if (newCount === dailyLimit) {
+      try {
+        const warningMessage = await message.reply({
+          content: `⚠️ **${message.author.username}**, you have reached your daily message quota of **${dailyLimit} messages**. Your next message will result in a timeout until midnight UTC.`,
+        });
+
+        // Delete the warning message after 10 seconds to keep the channel clean
+        setTimeout(async () => {
+          try {
+            await warningMessage.delete();
+          } catch (error) {
+            // Ignore errors if message is already deleted
+          }
+        }, 10000);
+      } catch (error) {
+        console.error("Failed to send quota warning:", error);
+      }
+
+      // Log the warning
+      try {
+        await database.executeWithRetry(async () => {
+          return await database.logAction(
+            message.guild.id,
+            "quota_warning_sent",
+            null,
+            message.author.id,
+            {
+              messageCount: newCount,
+              quotaLimit: dailyLimit,
+              messagesRemaining: 0,
+            }
+          );
+        });
+      } catch (logError) {
+        console.error("Failed to log quota warning:", logError);
+      }
+    }
+    // Check if user has one message left (send warning)
+    else if (newCount === dailyLimit - 1) {
+      try {
+        const warningMessage = await message.reply({
+          content: `⚠️ **${message.author.username}**, you have **1 message left** before reaching your daily quota. Your next message will result in a timeout until midnight UTC.`,
+        });
+
+        // Delete the warning message after 10 seconds to keep the channel clean
+        setTimeout(async () => {
+          try {
+            await warningMessage.delete();
+          } catch (error) {
+            // Ignore errors if message is already deleted
+          }
+        }, 10000);
+      } catch (error) {
+        console.error("Failed to send quota warning:", error);
+      }
+
+      // Log the warning attempt
+      try {
+        await database.executeWithRetry(async () => {
+          return await database.logAction(
+            message.guild.id,
+            "quota_warning_sent",
+            null,
+            message.author.id,
+            {
+              messageCount: newCount,
+              quotaLimit: dailyLimit,
+              messagesRemaining: 1,
+            }
+          );
+        });
+      } catch (logError) {
+        console.error("Failed to log quota warning:", logError);
+      }
+    }
   } catch (error) {
     console.error("Error in message tracking:", error);
-    
+
     // Log the error for debugging
     try {
       await database.executeWithRetry(async () => {
         return await database.logAction(
-          message.guild?.id || 'unknown',
-          'message_tracking_error',
+          message.guild?.id || "unknown",
+          "message_tracking_error",
           null,
-          message.author?.id || 'unknown',
-          { 
+          message.author?.id || "unknown",
+          {
             error: error.message,
             stack: error.stack,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
           }
         );
       });
