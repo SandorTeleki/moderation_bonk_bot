@@ -34,9 +34,16 @@ module.exports = {
     try {
       // Get the target member
       const targetMember = await interaction.guild.members.fetch(targetUser.id);
+
+      if (targetUser.id === interaction.client.user.id) {
+        return await interaction.reply({
+          content: "I never was on a watchlist, so you can't remove me!",
+          flags: MessageFlags.Ephemeral,
+        });
+      }
       if (!targetMember) {
         await interaction.reply({
-          content: `❌ User ${targetUser.username} is not a member of this server.`,
+          content: `User ${targetUser.username} is not a member of this server.`,
           flags: MessageFlags.Ephemeral,
         });
         return;
@@ -49,7 +56,7 @@ module.exports = {
 
       if (!watchlistRole) {
         await interaction.reply({
-          content: `❌ No watchlist role found in this server.`,
+          content: `No watchlist role found in this server.`,
           flags: MessageFlags.Ephemeral,
         });
         return;
@@ -58,7 +65,7 @@ module.exports = {
       // Check if user has the role
       if (!targetMember.roles.cache.has(watchlistRole.id)) {
         await interaction.reply({
-          content: `⚠️ ${targetUser.username} is not on the watchlist.`,
+          content: `${targetUser.username} is not on the watchlist.`,
           flags: MessageFlags.Ephemeral,
         });
         return;
@@ -80,14 +87,14 @@ module.exports = {
       );
 
       await interaction.reply({
-        content: `✅ ${targetUser.username} has been removed from the watchlist.\n**Reason:** ${reason}`,
+        content: `${targetUser.username} has been removed from the watchlist.\n**Reason:** ${reason}`,
         flags: MessageFlags.Ephemeral,
       });
     } catch (error) {
       console.error("Error removing user from watchlist:", error);
 
       await interaction.reply({
-        content: `❌ There was an error removing ${targetUser.username} from the watchlist. Please try again later.`,
+        content: `There was an error removing ${targetUser.username} from the watchlist. Please try again later.`,
         flags: MessageFlags.Ephemeral,
       });
     }

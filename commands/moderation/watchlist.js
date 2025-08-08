@@ -29,9 +29,16 @@ module.exports = {
         try {
             // Get the target member
             const targetMember = await interaction.guild.members.fetch(targetUser.id);
+            if (targetUser.id === interaction.client.user.id) {
+                return await interaction.reply({
+                    content: "I am already on all the watchlists, you can't add me to this one!",
+                    flags: MessageFlags.Ephemeral,
+                });
+            }
+
             if (!targetMember) {
                 await interaction.reply({
-                    content: `❌ User ${targetUser.username} is not a member of this server.`,
+                    content: `User ${targetUser.username} is not a member of this server.`,
                     flags: MessageFlags.Ephemeral
                 });
                 return;
@@ -51,7 +58,7 @@ module.exports = {
                 } catch (error) {
                     console.error('Error creating watchlist role:', error);
                     await interaction.reply({
-                        content: `❌ Failed to create watchlist role. Please ensure the bot has the "Manage Roles" permission.`,
+                        content: `Failed to create watchlist role. Please ensure the bot has the "Manage Roles" permission.`,
                         flags: MessageFlags.Ephemeral
                     });
                     return;
@@ -61,7 +68,7 @@ module.exports = {
             // Check if user already has the role
             if (targetMember.roles.cache.has(watchlistRole.id)) {
                 await interaction.reply({
-                    content: `⚠️ ${targetUser.username} is already on the watchlist.`,
+                    content: `${targetUser.username} is already on the watchlist.`,
                     flags: MessageFlags.Ephemeral
                 });
                 return;
@@ -80,7 +87,7 @@ module.exports = {
             );
 
             await interaction.reply({
-                content: `✅ ${targetUser.username} has been added to the watchlist.\n**Reason:** ${reason}`,
+                content: `${targetUser.username} has been added to the watchlist.\n**Reason:** ${reason}`,
                 flags: MessageFlags.Ephemeral
             });
 
@@ -88,7 +95,7 @@ module.exports = {
             console.error('Error adding user to watchlist:', error);
             
             await interaction.reply({
-                content: `❌ There was an error adding ${targetUser.username} to the watchlist. Please try again later.`,
+                content: `There was an error adding ${targetUser.username} to the watchlist. Please try again later.`,
                 flags: MessageFlags.Ephemeral
             });
         }
