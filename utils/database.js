@@ -94,7 +94,7 @@ class Database {
             reject(err);
             return;
           }
-          console.log("All database tables created successfully");
+          console.log("All database tables created successfully!");
           resolve();
         });
       });
