@@ -1,4 +1,5 @@
 const { SlashCommandBuilder, PermissionsBitField, MessageFlags } = require('discord.js');
+const database = require('../../utils/database.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -52,9 +53,39 @@ module.exports = {
         }
 
         try {
+            // Free the user from timeout
             await targetMember.timeout(null, reason);
+            
+            // Reset their daily message count to 0
+            const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+            try {
+                await database.resetMessageCount(interaction.guild.id, targetUser.id, today);
+                console.log(`Reset message count for user ${targetUser.id} in guild ${interaction.guild.id}`);
+            } catch (dbError) {
+                console.error('Error resetting message count:', dbError);
+                // Continue execution even if database operation fails
+            }
+            
+            // Log the free action to the database
+            try {
+                await database.logFree(interaction.guild.id, interaction.user.id, targetUser.id, reason);
+                console.log(`Logged free action for user ${targetUser.id} by ${interaction.user.id}`);
+            } catch (dbError) {
+                console.error('Error logging free action:', dbError);
+                // Continue execution even if logging fails
+            }
+            
+            // Log the quota reset action to the database
+            try {
+                await database.logQuotaReset(interaction.guild.id, interaction.user.id, targetUser.id, `Manual free: ${reason}`);
+                console.log(`Logged quota reset for user ${targetUser.id} by ${interaction.user.id}`);
+            } catch (dbError) {
+                console.error('Error logging quota reset:', dbError);
+                // Continue execution even if logging fails
+            }
+
             await interaction.reply({
-                content: `${targetUser.username} has been freed!\n**Reason:** ${reason}`,
+                content: `${targetUser.username} has been freed and their daily message count has been reset!\n**Reason:** ${reason}`,
                 flags: MessageFlags.Ephemeral
             })
         } catch (error) {

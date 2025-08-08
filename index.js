@@ -41,9 +41,11 @@ for (const folder of commandFolders) {
 }
 
 client.once(Events.ClientReady, async (readyClient) => {
+	console.log("");
 	console.log("==================================================")
 	console.log(`=====Ready! Logged in as ${readyClient.user.tag}=====`);
 	console.log("==================================================")
+	console.log("");
 
   // Initialize database
   try {
