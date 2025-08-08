@@ -17,13 +17,82 @@ class Database {
         this.db = new sqlite3.Database(this.dbPath, (err) => {
           if (err) {
             console.error("Error opening database:", err.message);
+
+            // Attempt to recover from database corruption
+            if (
+              err.message.includes("database disk image is malformed") ||
+              err.message.includes("file is not a database") ||
+              err.code === "SQLITE_NOTADB"
+            ) {
+              console.log(
+                "Database appears to be corrupted, attempting recovery..."
+              );
+              this.recoverCorruptedDatabase()
+                .then(() => {
+                  // Retry initialization after recovery
+                  this.db = new sqlite3.Database(this.dbPath, (retryErr) => {
+                    if (retryErr) {
+                      console.error(
+                        "Failed to recover database:",
+                        retryErr.message
+                      );
+                      reject(retryErr);
+                      return;
+                    }
+                    console.log("Database recovered and reconnected");
+                    this.createTables()
+                      .then(() => resolve())
+                      .catch(reject);
+                  });
+                })
+                .catch((recoveryErr) => {
+                  console.error("Database recovery failed:", recoveryErr);
+                  reject(recoveryErr);
+                });
+              return;
+            }
+
             reject(err);
             return;
           }
           console.log("Connected to SQLite database");
           this.createTables()
             .then(() => resolve())
-            .catch(reject);
+            .catch((createErr) => {
+              // Check if table creation failed due to corruption
+              if (
+                createErr.message.includes("file is not a database") ||
+                createErr.code === "SQLITE_NOTADB"
+              ) {
+                console.log(
+                  "Table creation failed due to corruption, attempting recovery..."
+                );
+                this.recoverCorruptedDatabase()
+                  .then(() => {
+                    // Retry initialization after recovery
+                    this.db = new sqlite3.Database(this.dbPath, (retryErr) => {
+                      if (retryErr) {
+                        console.error(
+                          "Failed to recover database:",
+                          retryErr.message
+                        );
+                        reject(retryErr);
+                        return;
+                      }
+                      console.log("Database recovered and reconnected");
+                      this.createTables()
+                        .then(() => resolve())
+                        .catch(reject);
+                    });
+                  })
+                  .catch((recoveryErr) => {
+                    console.error("Database recovery failed:", recoveryErr);
+                    reject(recoveryErr);
+                  });
+              } else {
+                reject(createErr);
+              }
+            });
         });
       } catch (error) {
         console.error("Database initialization error:", error);
@@ -460,12 +529,12 @@ class Database {
           reject(err);
           return;
         }
-        
+
         const quotaMap = new Map();
-        rows.forEach(row => {
+        rows.forEach((row) => {
           quotaMap.set(row.guild_id, row.daily_limit);
         });
-        
+
         console.log(`Loaded ${quotaMap.size} quota settings from database`);
         resolve(quotaMap);
       });
@@ -484,7 +553,7 @@ class Database {
       }
 
       const stats = {};
-      
+
       // Get count of quotas
       this.db.get("SELECT COUNT(*) as count FROM quotas", [], (err, row) => {
         if (err) {
@@ -492,45 +561,216 @@ class Database {
           return;
         }
         stats.quotaCount = row.count;
-        
+
         // Get count of daily messages
-        this.db.get("SELECT COUNT(*) as count FROM daily_messages", [], (err, row) => {
-          if (err) {
-            reject(err);
-            return;
-          }
-          stats.messageRecordCount = row.count;
-          
-          // Get count of logs
-          this.db.get("SELECT COUNT(*) as count FROM logs", [], (err, row) => {
+        this.db.get(
+          "SELECT COUNT(*) as count FROM daily_messages",
+          [],
+          (err, row) => {
             if (err) {
               reject(err);
               return;
             }
-            stats.logCount = row.count;
-            
-            // Get oldest message record date
-            this.db.get("SELECT MIN(date) as oldest_date FROM daily_messages", [], (err, row) => {
-              if (err) {
-                reject(err);
-                return;
-              }
-              stats.oldestMessageDate = row.oldest_date;
-              
-              // Get oldest log timestamp
-              this.db.get("SELECT MIN(timestamp) as oldest_timestamp FROM logs", [], (err, row) => {
+            stats.messageRecordCount = row.count;
+
+            // Get count of logs
+            this.db.get(
+              "SELECT COUNT(*) as count FROM logs",
+              [],
+              (err, row) => {
                 if (err) {
                   reject(err);
                   return;
                 }
-                stats.oldestLogTimestamp = row.oldest_timestamp;
-                resolve(stats);
-              });
-            });
-          });
-        });
+                stats.logCount = row.count;
+
+                // Get oldest message record date
+                this.db.get(
+                  "SELECT MIN(date) as oldest_date FROM daily_messages",
+                  [],
+                  (err, row) => {
+                    if (err) {
+                      reject(err);
+                      return;
+                    }
+                    stats.oldestMessageDate = row.oldest_date;
+
+                    // Get oldest log timestamp
+                    this.db.get(
+                      "SELECT MIN(timestamp) as oldest_timestamp FROM logs",
+                      [],
+                      (err, row) => {
+                        if (err) {
+                          reject(err);
+                          return;
+                        }
+                        stats.oldestLogTimestamp = row.oldest_timestamp;
+                        resolve(stats);
+                      }
+                    );
+                  }
+                );
+              }
+            );
+          }
+        );
       });
     });
+  }
+
+  /**
+   * Recover from corrupted database by recreating it
+   * @returns {Promise<void>}
+   */
+  async recoverCorruptedDatabase() {
+    const fs = require("fs");
+    const backupPath = this.dbPath + ".backup." + Date.now();
+
+    return new Promise((resolve, reject) => {
+      try {
+        // Backup the corrupted database file
+        if (fs.existsSync(this.dbPath)) {
+          fs.copyFileSync(this.dbPath, backupPath);
+          console.log(`Corrupted database backed up to: ${backupPath}`);
+
+          // Remove the corrupted database
+          fs.unlinkSync(this.dbPath);
+          console.log("Corrupted database file removed");
+        }
+
+        // Clean up old backup files (keep only last 5)
+        this.cleanupOldBackups();
+
+        resolve();
+      } catch (error) {
+        console.error("Error during database recovery:", error);
+        reject(error);
+      }
+    });
+  }
+
+  /**
+   * Clean up old backup files, keeping only the most recent ones
+   * @param {number} keepCount - Number of backup files to keep (default: 5)
+   */
+  cleanupOldBackups(keepCount = 5) {
+    try {
+      const fs = require("fs");
+      const path = require("path");
+
+      const dbDir = path.dirname(this.dbPath);
+      const dbName = path.basename(this.dbPath);
+
+      // Find all backup files for this database
+      const files = fs.readdirSync(dbDir);
+      const backupFiles = files
+        .filter((file) => file.startsWith(dbName + ".backup."))
+        .map((file) => ({
+          name: file,
+          path: path.join(dbDir, file),
+          timestamp: parseInt(file.split(".backup.")[1]) || 0,
+        }))
+        .sort((a, b) => b.timestamp - a.timestamp); // Sort by timestamp, newest first
+
+      // Remove old backup files, keeping only the most recent ones
+      if (backupFiles.length > keepCount) {
+        const filesToDelete = backupFiles.slice(keepCount);
+        filesToDelete.forEach((file) => {
+          try {
+            fs.unlinkSync(file.path);
+            console.log(`Cleaned up old backup file: ${file.name}`);
+          } catch (error) {
+            console.error(
+              `Failed to delete backup file ${file.name}:`,
+              error.message
+            );
+          }
+        });
+      }
+    } catch (error) {
+      console.error("Error cleaning up old backup files:", error);
+    }
+  }
+
+  /**
+   * Check database integrity
+   * @returns {Promise<boolean>} - True if database is healthy
+   */
+  async checkIntegrity() {
+    return new Promise((resolve, reject) => {
+      if (!this.db) {
+        reject(new Error("Database not initialized"));
+        return;
+      }
+
+      this.db.get("PRAGMA integrity_check", [], (err, row) => {
+        if (err) {
+          console.error("Database integrity check failed:", err.message);
+          resolve(false);
+          return;
+        }
+
+        const isHealthy = row && row.integrity_check === "ok";
+        if (!isHealthy) {
+          console.warn("Database integrity check failed:", row);
+        }
+        resolve(isHealthy);
+      });
+    });
+  }
+
+  /**
+   * Execute database operation with retry logic
+   * @param {Function} operation - Database operation to execute
+   * @param {number} maxRetries - Maximum number of retries (default: 3)
+   * @returns {Promise<any>} - Result of the operation
+   */
+  async executeWithRetry(operation, maxRetries = 3) {
+    let lastError;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error;
+        console.warn(
+          `Database operation failed (attempt ${attempt}/${maxRetries}):`,
+          error.message
+        );
+
+        // If it's a database lock error, wait before retrying
+        if (
+          error.message.includes("database is locked") &&
+          attempt < maxRetries
+        ) {
+          await new Promise((resolve) => setTimeout(resolve, 100 * attempt));
+          continue;
+        }
+
+        // If it's the last attempt or a non-retryable error, throw
+        if (attempt === maxRetries || !this.isRetryableError(error)) {
+          break;
+        }
+      }
+    }
+
+    throw lastError;
+  }
+
+  /**
+   * Check if an error is retryable
+   * @param {Error} error - The error to check
+   * @returns {boolean} - True if the error is retryable
+   */
+  isRetryableError(error) {
+    const retryableMessages = [
+      "database is locked",
+      "database disk image is malformed",
+      "SQLITE_BUSY",
+      "SQLITE_LOCKED",
+    ];
+
+    return retryableMessages.some((msg) => error.message.includes(msg));
   }
 
   /**
