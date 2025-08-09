@@ -25,10 +25,18 @@ module.exports = {
             const oldQuota = await database.getQuota(guildId);
 
             // Set the new quota in the database
-            await database.setQuota(guildId, limit, moderatorId);
+            await database.setQuota(guildId, limit, moderatorId, interaction.user.username);
 
             // Log the quota change
             await database.logQuotaSet(guildId, moderatorId, interaction.user.username, oldQuota, limit);
+
+            // Track command usage
+            try {
+                await database.incrementCommandUsage('dailyMessageQuota');
+            } catch (error) {
+                console.error('Error tracking command usage:', error);
+                // Continue execution even if usage tracking fails
+            }
 
             // Send appropriate response
             if (limit === 0) {

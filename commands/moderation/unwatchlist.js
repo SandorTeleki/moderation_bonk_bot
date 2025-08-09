@@ -108,6 +108,14 @@ module.exports = {
         { reason, timeoutRemoved }
       );
 
+      // Track command usage
+      try {
+        await database.incrementCommandUsage("unwatchlist");
+      } catch (error) {
+        console.error("Error tracking command usage:", error);
+        // Continue execution even if usage tracking fails
+      }
+
       // Create response message
       let responseMessage = `✅ ${targetUser.username} has been removed from the watchlist.\n**Reason:** ${reason}`;
       if (timeoutRemoved) {

@@ -43,7 +43,7 @@ describe('Integration Tests - Database Persistence', () => {
     const quotaLimit = 50;
 
     // Set quota
-    await database.setQuota(guildId, quotaLimit, moderatorId);
+    await database.setQuota(guildId, quotaLimit, moderatorId, 'TestModerator');
     
     // Verify quota is set
     const quota1 = await database.getQuota(guildId);
@@ -120,7 +120,7 @@ describe('Integration Tests - Database Persistence', () => {
     const quotaLimit = 30;
 
     // Set some data
-    await database.setQuota(guildId, quotaLimit, 'moderator-123');
+    await database.setQuota(guildId, quotaLimit, 'moderator-123', 'TestModerator');
     await database.close();
 
     // Corrupt the database file
@@ -134,7 +134,7 @@ describe('Integration Tests - Database Persistence', () => {
     await expect(newDatabase.initializeDatabase()).resolves.not.toThrow();
 
     // Should be able to use database after recovery
-    await newDatabase.setQuota(guildId, 40, 'moderator-456');
+    await newDatabase.setQuota(guildId, 40, 'moderator-456', 'TestModerator');
     const quota = await newDatabase.getQuota(guildId);
     expect(quota).toBe(40);
 
@@ -165,9 +165,9 @@ describe('Integration Tests - Database Persistence', () => {
 
   it('should load all quotas correctly on startup', async () => {
     // Set quotas for multiple guilds
-    await database.setQuota('guild-1', 25, 'mod-1');
-    await database.setQuota('guild-2', 50, 'mod-2');
-    await database.setQuota('guild-3', 0, 'mod-3'); // Disabled
+    await database.setQuota('guild-1', 25, 'mod-1', 'TestMod1');
+    await database.setQuota('guild-2', 50, 'mod-2', 'TestMod2');
+    await database.setQuota('guild-3', 0, 'mod-3', 'TestMod3'); // Disabled
 
     // Load all quotas
     const quotaMap = await database.loadAllQuotas();

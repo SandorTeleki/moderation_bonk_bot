@@ -111,7 +111,8 @@ class Database {
                 guild_id TEXT PRIMARY KEY,
                 daily_limit INTEGER NOT NULL DEFAULT 0,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                updated_by TEXT
+                updated_by TEXT,
+                updated_by_username TEXT
             )
         `;
 
@@ -141,6 +142,13 @@ class Database {
             )
         `;
 
+    const commandUsageTable = `
+            CREATE TABLE IF NOT EXISTS command_usage (
+                command_name TEXT PRIMARY KEY,
+                usage_count INTEGER NOT NULL DEFAULT 0
+            )
+        `;
+
     return new Promise((resolve, reject) => {
       this.db.serialize(() => {
         this.db.run(quotasTable, (err) => {
@@ -162,6 +170,14 @@ class Database {
         this.db.run(logsTable, (err) => {
           if (err) {
             console.error("Error creating logs table:", err.message);
+            reject(err);
+            return;
+          }
+        });
+
+        this.db.run(commandUsageTable, (err) => {
+          if (err) {
+            console.error("Error creating command_usage table:", err.message);
             reject(err);
             return;
           }
@@ -201,9 +217,10 @@ class Database {
    * @param {string} guildId - Discord guild ID
    * @param {number} limit - Daily message limit
    * @param {string} updatedBy - User ID who updated the quota
+   * @param {string} updatedByUsername - Username who updated the quota
    * @returns {Promise<void>}
    */
-  async setQuota(guildId, limit, updatedBy) {
+  async setQuota(guildId, limit, updatedBy, updatedByUsername) {
     return new Promise((resolve, reject) => {
       if (!this.db) {
         reject(new Error("Database not initialized"));
@@ -211,11 +228,11 @@ class Database {
       }
 
       const query = `
-                INSERT OR REPLACE INTO quotas (guild_id, daily_limit, updated_by, updated_at)
-                VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+                INSERT OR REPLACE INTO quotas (guild_id, daily_limit, updated_by, updated_by_username, updated_at)
+                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
             `;
 
-      this.db.run(query, [guildId, limit, updatedBy], function (err) {
+      this.db.run(query, [guildId, limit, updatedBy, updatedByUsername], function (err) {
         if (err) {
           console.error("Error setting quota:", err.message);
           reject(err);
@@ -578,6 +595,49 @@ class Database {
       });
     });
   }
+
+  /**
+   * Increment command usage count
+   * @param {string} commandName - Name of the command that was used
+   * @returns {Promise<number>} - New usage count for the command
+   */
+  async incrementCommandUsage(commandName) {
+    return new Promise((resolve, reject) => {
+      if (!this.db) {
+        reject(new Error("Database not initialized"));
+        return;
+      }
+
+      const query = `
+                INSERT INTO command_usage (command_name, usage_count)
+                VALUES (?, 1)
+                ON CONFLICT(command_name) 
+                DO UPDATE SET usage_count = usage_count + 1
+            `;
+
+      const db = this.db; // Store reference to avoid context issues
+      db.run(query, [commandName], function (err) {
+        if (err) {
+          console.error("Error incrementing command usage:", err.message);
+          reject(err);
+          return;
+        }
+
+        // Get the updated count
+        const getQuery = "SELECT usage_count FROM command_usage WHERE command_name = ?";
+        db.get(getQuery, [commandName], (err, row) => {
+          if (err) {
+            console.error("Error getting updated command usage count:", err.message);
+            reject(err);
+            return;
+          }
+          resolve(row ? row.usage_count : 1);
+        });
+      });
+    });
+  }
+
+
 
   /**
    * Recover from corrupted database by recreating it

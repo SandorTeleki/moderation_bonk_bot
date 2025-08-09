@@ -88,6 +88,14 @@ module.exports = {
         // Continue execution even if logging fails
       }
 
+      // Track command usage
+      try {
+        await database.incrementCommandUsage('timeout');
+      } catch (error) {
+        console.error('Error tracking command usage:', error);
+        // Continue execution even if usage tracking fails
+      }
+
       await interaction.reply({
         content: `${
           targetUser.username

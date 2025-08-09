@@ -88,6 +88,14 @@ module.exports = {
                 { reason }
             );
 
+            // Track command usage
+            try {
+                await database.incrementCommandUsage('watchlist');
+            } catch (error) {
+                console.error('Error tracking command usage:', error);
+                // Continue execution even if usage tracking fails
+            }
+
             await interaction.reply({
                 content: `${targetUser.username} has been added to the watchlist.\n**Reason:** ${reason}`,
                 flags: MessageFlags.Ephemeral
