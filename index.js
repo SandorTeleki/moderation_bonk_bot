@@ -55,10 +55,14 @@ client.once(Events.ClientReady, async (readyClient) => {
 
     try {
       const quotaMap = await database.loadAllQuotas();
-      console.log(`Loaded quota settings for ${quotaMap.size} guilds from database`);
+      console.log(
+        `Loaded quota settings for ${quotaMap.size} guilds from database`
+      );
     } catch (error) {
       console.error("Error loading quota settings on startup:", error);
     }
+
+
 
     // Create watchlist roles in all guilds on startup
     try {
@@ -118,7 +122,6 @@ function calculateTimeoutUntilMidnightUTC() {
 async function timeoutUser(member, reason) {
   try {
     const timeoutDuration = calculateTimeoutUntilMidnightUTC();
-
     await member.timeout(timeoutDuration, reason);
     return true;
   } catch (error) {
@@ -143,7 +146,9 @@ async function createWatchlistRoles(client) {
           color: "#FF6B6B",
           reason: "Automatic watchlist role creation for quota system",
         });
-        console.log(`Created watchlist role in guild: ${guild.name} (${guildId})`);
+        console.log(
+          `Created watchlist role in guild: ${guild.name} (${guildId})`
+        );
 
         try {
           await database.logAction(
@@ -156,13 +161,21 @@ async function createWatchlistRoles(client) {
             { guildName: guild.name, automatic: true }
           );
         } catch (logError) {
-          console.error(`Error logging watchlist role creation for guild ${guildId}:`, logError);
+          console.error(
+            `Error logging watchlist role creation for guild ${guildId}:`,
+            logError
+          );
         }
       } else {
-        console.log(`Watchlist role already exists in guild: ${guild.name} (${guildId})`);
+        console.log(
+          `Watchlist role already exists in guild: ${guild.name} (${guildId})`
+        );
       }
     } catch (error) {
-      console.error(`Error creating watchlist role in guild ${guild.name} (${guildId}):`, error);
+      console.error(
+        `Error creating watchlist role in guild ${guild.name} (${guildId}):`,
+        error
+      );
     }
   }
 }
@@ -191,11 +204,17 @@ client.on(Events.GuildCreate, async (guild) => {
           { guildName: guild.name, automatic: true, onJoin: true }
         );
       } catch (logError) {
-        console.error(`Error logging watchlist role creation for new guild ${guild.id}:`, logError);
+        console.error(
+          `Error logging watchlist role creation for new guild ${guild.id}:`,
+          logError
+        );
       }
     }
   } catch (error) {
-    console.error(`Error creating watchlist role in new guild ${guild.name} (${guild.id}):`, error);
+    console.error(
+      `Error creating watchlist role in new guild ${guild.name} (${guild.id}):`,
+      error
+    );
   }
 });
 
@@ -270,6 +289,13 @@ client.on(Events.MessageCreate, async (message) => {
       );
     });
 
+    // Debug logging for quota issues - focus on the core problem
+    console.log(`[QUOTA] Guild: ${message.guild.name} (${message.guild.id})`);
+    console.log(`[QUOTA] User: ${message.author.username} (${message.author.id})`);
+    console.log(`[QUOTA] Date: ${today}`);
+    console.log(`[QUOTA] Count: ${newCount}/${dailyLimit}`);
+    console.log(`[QUOTA] Will timeout: ${newCount > dailyLimit}`);
+
     if (newCount > dailyLimit) {
       if (member.moderatable && !member.isCommunicationDisabled()) {
         const success = await timeoutUser(
@@ -302,9 +328,9 @@ client.on(Events.MessageCreate, async (message) => {
             await message.channel.send({
               content: `⚠️ ${message.author.username} has exceeded their daily message quota (${dailyLimit} messages) and has been timed out until <t:${midnightUTCTimestamp}:F> (midnight UTC). Bonk!`,
             });
-          } catch (error) { 
-			console.error("Failed to send quota exceeded notification:", error);
-		  }
+          } catch (error) {
+            console.error("Failed to send quota exceeded notification:", error);
+          }
         } else {
           try {
             await database.executeWithRetry(async () => {

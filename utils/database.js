@@ -195,7 +195,9 @@ class Database {
           reject(err);
           return;
         }
-        resolve(row ? row.daily_limit : 0);
+        const quota = row ? row.daily_limit : 0;
+        console.log(`[DB] getQuota for guild ${guildId}: ${quota}`);
+        resolve(quota);
       });
     });
   }
@@ -220,14 +222,18 @@ class Database {
                 VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
             `;
 
-      this.db.run(query, [guildId, limit, updatedBy, updatedByUsername], function (err) {
-        if (err) {
-          console.error("Error setting quota:", err.message);
-          reject(err);
-          return;
+      this.db.run(
+        query,
+        [guildId, limit, updatedBy, updatedByUsername],
+        function (err) {
+          if (err) {
+            console.error("Error setting quota:", err.message);
+            reject(err);
+            return;
+          }
+          resolve();
         }
-        resolve();
-      });
+      );
     });
   }
 
@@ -270,7 +276,11 @@ class Database {
             reject(err);
             return;
           }
-          resolve(row ? row.message_count : 1);
+          const count = row ? row.message_count : 1;
+          console.log(
+            `[DB] incrementMessageCount for guild ${guildId}, user ${userId}, date ${date}: ${count}`
+          );
+          resolve(count);
         });
       });
     });
@@ -344,7 +354,15 @@ class Database {
    * @param {Object} details - Additional details as object (will be JSON stringified)
    * @returns {Promise<void>}
    */
-  async logAction(guildId, actionType, moderatorId, moderatorUsername, targetUserId, targetUsername, details) {
+  async logAction(
+    guildId,
+    actionType,
+    moderatorId,
+    moderatorUsername,
+    targetUserId,
+    targetUsername,
+    details
+  ) {
     return new Promise((resolve, reject) => {
       if (!this.db) {
         reject(new Error("Database not initialized"));
@@ -360,7 +378,15 @@ class Database {
 
       this.db.run(
         query,
-        [guildId, actionType, moderatorId, moderatorUsername, targetUserId, targetUsername, detailsJson],
+        [
+          guildId,
+          actionType,
+          moderatorId,
+          moderatorUsername,
+          targetUserId,
+          targetUsername,
+          detailsJson,
+        ],
         function (err) {
           if (err) {
             console.error("Error logging action:", err.message);
@@ -382,12 +408,26 @@ class Database {
    * @param {number} newQuota - New quota limit
    * @returns {Promise<void>}
    */
-  async logQuotaSet(guildId, moderatorId, moderatorUsername, oldQuota, newQuota) {
+  async logQuotaSet(
+    guildId,
+    moderatorId,
+    moderatorUsername,
+    oldQuota,
+    newQuota
+  ) {
     const details = {
       oldQuota,
       newQuota,
     };
-    return this.logAction(guildId, "quota_set", moderatorId, moderatorUsername, null, null, details);
+    return this.logAction(
+      guildId,
+      "quota_set",
+      moderatorId,
+      moderatorUsername,
+      null,
+      null,
+      details
+    );
   }
 
   /**
@@ -401,7 +441,15 @@ class Database {
    * @param {number} duration - Timeout duration in milliseconds
    * @returns {Promise<void>}
    */
-  async logTimeout(guildId, moderatorId, moderatorUsername, targetUserId, targetUsername, reason, duration) {
+  async logTimeout(
+    guildId,
+    moderatorId,
+    moderatorUsername,
+    targetUserId,
+    targetUsername,
+    reason,
+    duration
+  ) {
     const details = {
       reason,
       duration,
@@ -427,11 +475,26 @@ class Database {
    * @param {string} reason - Reason for freeing user
    * @returns {Promise<void>}
    */
-  async logFree(guildId, moderatorId, moderatorUsername, targetUserId, targetUsername, reason) {
+  async logFree(
+    guildId,
+    moderatorId,
+    moderatorUsername,
+    targetUserId,
+    targetUsername,
+    reason
+  ) {
     const details = {
       reason,
     };
-    return this.logAction(guildId, "free", moderatorId, moderatorUsername, targetUserId, targetUsername, details);
+    return this.logAction(
+      guildId,
+      "free",
+      moderatorId,
+      moderatorUsername,
+      targetUserId,
+      targetUsername,
+      details
+    );
   }
 
   /**
@@ -443,12 +506,26 @@ class Database {
    * @param {number} quotaLimit - Quota limit that was exceeded
    * @returns {Promise<void>}
    */
-  async logAutoTimeout(guildId, targetUserId, targetUsername, messageCount, quotaLimit) {
+  async logAutoTimeout(
+    guildId,
+    targetUserId,
+    targetUsername,
+    messageCount,
+    quotaLimit
+  ) {
     const details = {
       messageCount,
       quotaLimit,
     };
-    return this.logAction(guildId, "auto_timeout", null, null, targetUserId, targetUsername, details);
+    return this.logAction(
+      guildId,
+      "auto_timeout",
+      null,
+      null,
+      targetUserId,
+      targetUsername,
+      details
+    );
   }
 
   /**
@@ -461,7 +538,14 @@ class Database {
    * @param {string} reason - Reason for quota reset
    * @returns {Promise<void>}
    */
-  async logQuotaReset(guildId, moderatorId, moderatorUsername, targetUserId, targetUsername, reason) {
+  async logQuotaReset(
+    guildId,
+    moderatorId,
+    moderatorUsername,
+    targetUserId,
+    targetUsername,
+    reason
+  ) {
     const details = {
       reason,
     };
@@ -605,10 +689,14 @@ class Database {
           return;
         }
 
-        const getQuery = "SELECT usage_count FROM command_usage WHERE command_name = ?";
+        const getQuery =
+          "SELECT usage_count FROM command_usage WHERE command_name = ?";
         db.get(getQuery, [commandName], (err, row) => {
           if (err) {
-            console.error("Error getting updated command usage count:", err.message);
+            console.error(
+              "Error getting updated command usage count:",
+              err.message
+            );
             reject(err);
             return;
           }
@@ -617,8 +705,6 @@ class Database {
       });
     });
   }
-
-
 
   /**
    * Recover from corrupted database by recreating it
