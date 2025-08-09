@@ -77,17 +77,43 @@ module.exports = {
         `Watchlist removed by ${interaction.user.username}: ${reason}`
       );
 
+      // Remove timeout if the user is currently timed out
+      let timeoutRemoved = false;
+      if (targetMember.isCommunicationDisabled()) {
+        try {
+          await targetMember.timeout(
+            null,
+            `Timeout removed - unwatchlisted by ${interaction.user.username}: ${reason}`
+          );
+          timeoutRemoved = true;
+          console.log(
+            `Removed timeout for ${targetUser.username} when unwatchlisted`
+          );
+        } catch (timeoutError) {
+          console.error(
+            `Failed to remove timeout for ${targetUser.username}:`,
+            timeoutError
+          );
+        }
+      }
+
       // Log the action
       await database.logAction(
         guildId,
         "watchlist_remove",
         moderatorId,
         targetUser.id,
-        { reason, username: targetUser.username }
+        { reason, username: targetUser.username, timeoutRemoved }
       );
 
+      // Create response message
+      let responseMessage = `✅ ${targetUser.username} has been removed from the watchlist.\n**Reason:** ${reason}`;
+      if (timeoutRemoved) {
+        responseMessage += `\n🔓 **Timeout also removed** - user can now send messages immediately.`;
+      }
+
       await interaction.reply({
-        content: `${targetUser.username} has been removed from the watchlist.\n**Reason:** ${reason}`,
+        content: responseMessage,
         flags: MessageFlags.Ephemeral,
       });
     } catch (error) {
