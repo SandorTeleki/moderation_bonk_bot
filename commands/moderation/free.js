@@ -1,6 +1,14 @@
 const { SlashCommandBuilder, PermissionsBitField, MessageFlags } = require("discord.js");
 const database = require("../../utils/database.js");
 
+function getTodayUTC() {
+  const now = new Date();
+  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(
+    2,
+    "0"
+  )}-${String(now.getUTCDate()).padStart(2, "0")}`;
+}
+
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("free")
@@ -57,7 +65,9 @@ module.exports = {
 
     try {
       await targetMember.timeout(null, reason);
-      const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD format
+      
+      // Use the same date format as message tracking system
+      const today = getTodayUTC();
 
       try {
         await database.resetMessageCount(
@@ -65,8 +75,12 @@ module.exports = {
           targetUser.id,
           today
         );
+        console.log(
+          `Reset message count for user ${targetUser.id} in guild ${interaction.guild.id}`
+        );
       } catch (dbError) {
         console.error("Error resetting message count:", dbError);
+        // Continue execution even if database operation fails
       }
 
       try {
