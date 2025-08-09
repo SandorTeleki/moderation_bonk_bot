@@ -17,4 +17,4 @@ jobs:
         username: ${{ secrets.LINODE_USER }}
         key: ${{ secrets.LINODE_SSH_KEY }}
         script: |
-          /scripts/deploy-moderation-bot.sh
+          /root/scripts/deploy-moderation-bot.sh
