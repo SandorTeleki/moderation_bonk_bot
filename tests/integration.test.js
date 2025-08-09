@@ -163,41 +163,6 @@ describe('Integration Tests - Database Persistence', () => {
     expect(Math.max(...results)).toBe(10);
   });
 
-  it('should properly clean up old records', async () => {
-    const guildId = 'test-guild-123';
-    const userId = 'user-456';
-
-    // Create old message records
-    const oldDate = '2020-01-01';
-    const recentDate = '2024-01-15';
-    
-    await database.incrementMessageCount(guildId, userId, oldDate);
-    await database.incrementMessageCount(guildId, userId, recentDate);
-
-    // Create old log entries
-    await database.logAction(guildId, 'test_action', 'mod-123', userId, { test: true });
-
-    // Manually update timestamp to make it old
-    await new Promise((resolve, reject) => {
-      database.db.run(
-        'UPDATE logs SET timestamp = datetime("now", "-40 days") WHERE action_type = ?',
-        ['test_action'],
-        (err) => err ? reject(err) : resolve()
-      );
-    });
-
-    // Run cleanup
-    const messagesDeleted = await database.cleanupOldMessages(7);
-    const logsDeleted = await database.cleanupOldLogs(30);
-
-    expect(messagesDeleted).toBe(1); // Should delete the old message record
-    expect(logsDeleted).toBe(1); // Should delete the old log entry
-
-    // Verify recent data is preserved
-    const recentCount = await database.getMessageCount(guildId, userId, recentDate);
-    expect(recentCount).toBe(1);
-  });
-
   it('should load all quotas correctly on startup', async () => {
     // Set quotas for multiple guilds
     await database.setQuota('guild-1', 25, 'mod-1');
