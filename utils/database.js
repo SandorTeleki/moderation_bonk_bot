@@ -133,7 +133,9 @@ class Database {
                 guild_id TEXT NOT NULL,
                 action_type TEXT NOT NULL,
                 moderator_id TEXT,
+                moderator_username TEXT,
                 target_user_id TEXT,
+                target_username TEXT,
                 details TEXT,
                 timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
             )
@@ -332,11 +334,13 @@ class Database {
    * @param {string} guildId - Discord guild ID
    * @param {string} actionType - Type of action (quota_set, timeout, untimeout, auto_timeout, quota_reset)
    * @param {string|null} moderatorId - User ID of moderator (null for automatic actions)
+   * @param {string|null} moderatorUsername - Username of moderator (null for automatic actions)
    * @param {string|null} targetUserId - User ID of target user
+   * @param {string|null} targetUsername - Username of target user
    * @param {Object} details - Additional details as object (will be JSON stringified)
    * @returns {Promise<void>}
    */
-  async logAction(guildId, actionType, moderatorId, targetUserId, details) {
+  async logAction(guildId, actionType, moderatorId, moderatorUsername, targetUserId, targetUsername, details) {
     return new Promise((resolve, reject) => {
       if (!this.db) {
         reject(new Error("Database not initialized"));
@@ -344,15 +348,15 @@ class Database {
       }
 
       const query = `
-                INSERT INTO logs (guild_id, action_type, moderator_id, target_user_id, details, timestamp)
-                VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                INSERT INTO logs (guild_id, action_type, moderator_id, moderator_username, target_user_id, target_username, details, timestamp)
+                VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             `;
 
       const detailsJson = details ? JSON.stringify(details) : null;
 
       this.db.run(
         query,
-        [guildId, actionType, moderatorId, targetUserId, detailsJson],
+        [guildId, actionType, moderatorId, moderatorUsername, targetUserId, targetUsername, detailsJson],
         function (err) {
           if (err) {
             console.error("Error logging action:", err.message);
@@ -369,28 +373,31 @@ class Database {
    * Log quota setting action
    * @param {string} guildId - Discord guild ID
    * @param {string} moderatorId - User ID of moderator
+   * @param {string} moderatorUsername - Username of moderator
    * @param {number} oldQuota - Previous quota limit
    * @param {number} newQuota - New quota limit
    * @returns {Promise<void>}
    */
-  async logQuotaSet(guildId, moderatorId, oldQuota, newQuota) {
+  async logQuotaSet(guildId, moderatorId, moderatorUsername, oldQuota, newQuota) {
     const details = {
       oldQuota,
       newQuota,
     };
-    return this.logAction(guildId, "quota_set", moderatorId, null, details);
+    return this.logAction(guildId, "quota_set", moderatorId, moderatorUsername, null, null, details);
   }
 
   /**
    * Log manual timeout action
    * @param {string} guildId - Discord guild ID
    * @param {string} moderatorId - User ID of moderator
+   * @param {string} moderatorUsername - Username of moderator
    * @param {string} targetUserId - User ID of target user
+   * @param {string} targetUsername - Username of target user
    * @param {string} reason - Reason for timeout
    * @param {number} duration - Timeout duration in milliseconds
    * @returns {Promise<void>}
    */
-  async logTimeout(guildId, moderatorId, targetUserId, reason, duration) {
+  async logTimeout(guildId, moderatorId, moderatorUsername, targetUserId, targetUsername, reason, duration) {
     const details = {
       reason,
       duration,
@@ -399,7 +406,9 @@ class Database {
       guildId,
       "timeout",
       moderatorId,
+      moderatorUsername,
       targetUserId,
+      targetUsername,
       details
     );
   }
@@ -408,42 +417,47 @@ class Database {
    * Log manual free action
    * @param {string} guildId - Discord guild ID
    * @param {string} moderatorId - User ID of moderator
+   * @param {string} moderatorUsername - Username of moderator
    * @param {string} targetUserId - User ID of target user
+   * @param {string} targetUsername - Username of target user
    * @param {string} reason - Reason for freeing user
    * @returns {Promise<void>}
    */
-  async logFree(guildId, moderatorId, targetUserId, reason) {
+  async logFree(guildId, moderatorId, moderatorUsername, targetUserId, targetUsername, reason) {
     const details = {
       reason,
     };
-    return this.logAction(guildId, "free", moderatorId, targetUserId, details);
+    return this.logAction(guildId, "free", moderatorId, moderatorUsername, targetUserId, targetUsername, details);
   }
 
   /**
    * Log automatic timeout action for quota violation
    * @param {string} guildId - Discord guild ID
    * @param {string} targetUserId - User ID of target user
+   * @param {string} targetUsername - Username of target user
    * @param {number} messageCount - Current message count
    * @param {number} quotaLimit - Quota limit that was exceeded
    * @returns {Promise<void>}
    */
-  async logAutoTimeout(guildId, targetUserId, messageCount, quotaLimit) {
+  async logAutoTimeout(guildId, targetUserId, targetUsername, messageCount, quotaLimit) {
     const details = {
       messageCount,
       quotaLimit,
     };
-    return this.logAction(guildId, "auto_timeout", null, targetUserId, details);
+    return this.logAction(guildId, "auto_timeout", null, null, targetUserId, targetUsername, details);
   }
 
   /**
    * Log quota reset action
    * @param {string} guildId - Discord guild ID
    * @param {string} moderatorId - User ID of moderator (null for automatic)
+   * @param {string} moderatorUsername - Username of moderator (null for automatic)
    * @param {string} targetUserId - User ID of target user
+   * @param {string} targetUsername - Username of target user
    * @param {string} reason - Reason for quota reset
    * @returns {Promise<void>}
    */
-  async logQuotaReset(guildId, moderatorId, targetUserId, reason) {
+  async logQuotaReset(guildId, moderatorId, moderatorUsername, targetUserId, targetUsername, reason) {
     const details = {
       reason,
     };
@@ -451,7 +465,9 @@ class Database {
       guildId,
       "quota_reset",
       moderatorId,
+      moderatorUsername,
       targetUserId,
+      targetUsername,
       details
     );
   }

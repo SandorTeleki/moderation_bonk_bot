@@ -102,8 +102,10 @@ module.exports = {
         guildId,
         "watchlist_remove",
         moderatorId,
+        interaction.user.username,
         targetUser.id,
-        { reason, username: targetUser.username, timeoutRemoved }
+        targetUser.username,
+        { reason, timeoutRemoved }
       );
 
       // Create response message

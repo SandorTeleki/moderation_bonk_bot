@@ -77,7 +77,9 @@ module.exports = {
         await database.logTimeout(
           interaction.guild.id,
           interaction.user.id,
+          interaction.user.username,
           targetUser.id,
+          targetUser.username,
           reason,
           timeoutDuration
         );

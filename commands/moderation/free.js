@@ -85,7 +85,9 @@ module.exports = {
         await database.logFree(
           interaction.guild.id,
           interaction.user.id,
+          interaction.user.username,
           targetUser.id,
+          targetUser.username,
           reason
         );
         console.log(
@@ -101,7 +103,9 @@ module.exports = {
         await database.logQuotaReset(
           interaction.guild.id,
           interaction.user.id,
+          interaction.user.username,
           targetUser.id,
+          targetUser.username,
           `Manual free: ${reason}`
         );
         console.log(

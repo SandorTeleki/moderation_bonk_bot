@@ -82,8 +82,10 @@ module.exports = {
                 guildId,
                 'watchlist_add',
                 moderatorId,
+                interaction.user.username,
                 targetUser.id,
-                { reason, username: targetUser.username }
+                targetUser.username,
+                { reason }
             );
 
             await interaction.reply({

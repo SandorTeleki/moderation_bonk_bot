@@ -99,6 +99,8 @@ describe("Automatic Watchlist Role Creation", () => {
                 "watchlist_role_created",
                 null,
                 null,
+                null,
+                null,
                 { guildName: guild.name, automatic: true }
               );
             } catch (logError) {
@@ -141,11 +143,15 @@ describe("Automatic Watchlist Role Creation", () => {
       "watchlist_role_created",
       null,
       null,
+      null,
+      null,
       { guildName: "Test Guild 1", automatic: true }
     );
     expect(mockDatabase.logAction).toHaveBeenCalledWith(
       "guild-2",
       "watchlist_role_created",
+      null,
+      null,
       null,
       null,
       { guildName: "Test Guild 2", automatic: true }

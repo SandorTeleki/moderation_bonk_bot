@@ -97,9 +97,9 @@ describe('Integration Tests - Database Persistence', () => {
     const targetUserId = 'target-789';
 
     // Log multiple actions
-    await database.logQuotaSet(guildId, moderatorId, 0, 25);
-    await database.logTimeout(guildId, moderatorId, targetUserId, 'Spam', 3600000);
-    await database.logFree(guildId, moderatorId, targetUserId, 'Appeal accepted');
+    await database.logQuotaSet(guildId, moderatorId, 'TestModerator', 0, 25);
+    await database.logTimeout(guildId, moderatorId, 'TestModerator', targetUserId, 'TestUser', 'Spam', 3600000);
+    await database.logFree(guildId, moderatorId, 'TestModerator', targetUserId, 'TestUser', 'Appeal accepted');
 
     // Close and reopen database
     await database.close();

@@ -46,7 +46,7 @@ describe('Database Logging Operations', () => {
             const targetUserId = 'target_789';
             const details = { test: 'data', value: 42 };
 
-            await database.logAction(guildId, actionType, moderatorId, targetUserId, details);
+            await database.logAction(guildId, actionType, moderatorId, 'TestModerator', targetUserId, 'TestUser', details);
 
             // Verify the log was created
             const result = await new Promise((resolve, reject) => {
@@ -70,7 +70,7 @@ describe('Database Logging Operations', () => {
         });
 
         it('should handle null moderator for automatic actions', async () => {
-            await database.logAction('guild_123', 'auto_action', null, 'user_456', { auto: true });
+            await database.logAction('guild_123', 'auto_action', null, null, 'user_456', 'TestUser', { auto: true });
 
             const result = await new Promise((resolve, reject) => {
                 database.db.get(
@@ -88,7 +88,7 @@ describe('Database Logging Operations', () => {
         });
 
         it('should handle null target user', async () => {
-            await database.logAction('guild_123', 'system_action', 'mod_456', null, { system: true });
+            await database.logAction('guild_123', 'system_action', 'mod_456', 'TestModerator', null, null, { system: true });
 
             const result = await new Promise((resolve, reject) => {
                 database.db.get(
@@ -106,7 +106,7 @@ describe('Database Logging Operations', () => {
         });
 
         it('should handle null details', async () => {
-            await database.logAction('guild_123', 'simple_action', 'mod_456', 'user_789', null);
+            await database.logAction('guild_123', 'simple_action', 'mod_456', 'TestModerator', 'user_789', 'TestUser', null);
 
             const result = await new Promise((resolve, reject) => {
                 database.db.get(
@@ -127,7 +127,7 @@ describe('Database Logging Operations', () => {
             database.db = null;
             
             try {
-                await database.logAction('guild', 'action', 'mod', 'user', {});
+                await database.logAction('guild', 'action', 'mod', 'TestModerator', 'user', 'TestUser', {});
                 expect.fail('Should have thrown an error');
             } catch (error) {
                 expect(error.message).toBe('Database not initialized');
@@ -144,7 +144,7 @@ describe('Database Logging Operations', () => {
             const oldQuota = 10;
             const newQuota = 20;
 
-            await database.logQuotaSet(guildId, moderatorId, oldQuota, newQuota);
+            await database.logQuotaSet(guildId, moderatorId, 'TestModerator', oldQuota, newQuota);
 
             const result = await new Promise((resolve, reject) => {
                 database.db.get(
@@ -176,7 +176,7 @@ describe('Database Logging Operations', () => {
             const reason = 'Spam violation';
             const duration = 3600000; // 1 hour in ms
 
-            await database.logTimeout(guildId, moderatorId, targetUserId, reason, duration);
+            await database.logTimeout(guildId, moderatorId, 'TestModerator', targetUserId, 'TestUser', reason, duration);
 
             const result = await new Promise((resolve, reject) => {
                 database.db.get(
@@ -207,7 +207,7 @@ describe('Database Logging Operations', () => {
             const targetUserId = 'user_789';
             const reason = 'Appeal approved';
 
-            await database.logFree(guildId, moderatorId, targetUserId, reason);
+            await database.logFree(guildId, moderatorId, 'TestModerator', targetUserId, 'TestUser', reason);
 
             const result = await new Promise((resolve, reject) => {
                 database.db.get(
@@ -237,7 +237,7 @@ describe('Database Logging Operations', () => {
             const messageCount = 25;
             const quotaLimit = 20;
 
-            await database.logAutoTimeout(guildId, targetUserId, messageCount, quotaLimit);
+            await database.logAutoTimeout(guildId, targetUserId, 'TestUser', messageCount, quotaLimit);
 
             const result = await new Promise((resolve, reject) => {
                 database.db.get(
@@ -268,7 +268,7 @@ describe('Database Logging Operations', () => {
             const targetUserId = 'user_789';
             const reason = 'Manual reset requested';
 
-            await database.logQuotaReset(guildId, moderatorId, targetUserId, reason);
+            await database.logQuotaReset(guildId, moderatorId, 'TestModerator', targetUserId, 'TestUser', reason);
 
             const result = await new Promise((resolve, reject) => {
                 database.db.get(
@@ -295,7 +295,7 @@ describe('Database Logging Operations', () => {
             const targetUserId = 'user_789';
             const reason = 'Daily reset';
 
-            await database.logQuotaReset(guildId, null, targetUserId, reason);
+            await database.logQuotaReset(guildId, null, null, targetUserId, 'TestUser', reason);
 
             const result = await new Promise((resolve, reject) => {
                 database.db.get(
@@ -320,11 +320,11 @@ describe('Database Logging Operations', () => {
             const targetUserId = 'user_456';
 
             // Log different types of actions
-            await database.logQuotaSet(guildId, moderatorId, 0, 15);
-            await database.logTimeout(guildId, moderatorId, targetUserId, 'Spam', 3600000);
-            await database.logAutoTimeout(guildId, targetUserId, 20, 15);
-            await database.logFree(guildId, moderatorId, targetUserId, 'Appeal approved');
-            await database.logQuotaReset(guildId, moderatorId, targetUserId, 'Manual reset');
+            await database.logQuotaSet(guildId, moderatorId, 'TestModerator', 0, 15);
+            await database.logTimeout(guildId, moderatorId, 'TestModerator', targetUserId, 'TestUser', 'Spam', 3600000);
+            await database.logAutoTimeout(guildId, targetUserId, 'TestUser', 20, 15);
+            await database.logFree(guildId, moderatorId, 'TestModerator', targetUserId, 'TestUser', 'Appeal approved');
+            await database.logQuotaReset(guildId, moderatorId, 'TestModerator', targetUserId, 'TestUser', 'Manual reset');
 
             // Verify all logs were created
             const logCount = await new Promise((resolve, reject) => {
@@ -357,13 +357,13 @@ describe('Database Logging Operations', () => {
             const guildId = 'chrono_guild';
             
             // Add logs with small delays to ensure different timestamps
-            await database.logAction(guildId, 'first_action', 'mod_1', null, {});
+            await database.logAction(guildId, 'first_action', 'mod_1', 'Moderator1', null, null, {});
             await new Promise(resolve => setTimeout(resolve, 10));
             
-            await database.logAction(guildId, 'second_action', 'mod_2', null, {});
+            await database.logAction(guildId, 'second_action', 'mod_2', 'Moderator2', null, null, {});
             await new Promise(resolve => setTimeout(resolve, 10));
             
-            await database.logAction(guildId, 'third_action', 'mod_3', null, {});
+            await database.logAction(guildId, 'third_action', 'mod_3', 'Moderator3', null, null, {});
 
             // Retrieve logs in chronological order
             const logs = await new Promise((resolve, reject) => {

@@ -28,7 +28,7 @@ module.exports = {
             await database.setQuota(guildId, limit, moderatorId);
 
             // Log the quota change
-            await database.logQuotaSet(guildId, moderatorId, oldQuota, limit);
+            await database.logQuotaSet(guildId, moderatorId, interaction.user.username, oldQuota, limit);
 
             // Send appropriate response
             if (limit === 0) {

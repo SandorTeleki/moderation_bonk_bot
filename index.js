@@ -95,6 +95,8 @@ client.once(Events.ClientReady, async (readyClient) => {
             "integrity_check_error",
             null,
             null,
+            null,
+            null,
             { error: error.message, timestamp: new Date().toISOString() }
           );
         } catch (logError) {
@@ -206,6 +208,8 @@ async function createWatchlistRoles(client) {
             "watchlist_role_created",
             null,
             null,
+            null,
+            null,
             { guildName: guild.name, automatic: true }
           );
         } catch (logError) {
@@ -253,6 +257,8 @@ client.on(Events.GuildCreate, async (guild) => {
         await database.logAction(
           guild.id,
           "watchlist_role_created",
+          null,
+          null,
           null,
           null,
           { guildName: guild.name, automatic: true, onJoin: true }
@@ -369,6 +375,7 @@ client.on(Events.MessageCreate, async (message) => {
               return await database.logAutoTimeout(
                 message.guild.id,
                 message.author.id,
+                message.author.username,
                 newCount,
                 dailyLimit
               );
@@ -400,7 +407,9 @@ client.on(Events.MessageCreate, async (message) => {
                 message.guild.id,
                 "timeout_failed",
                 null,
+                null,
                 message.author.id,
+                message.author.username,
                 {
                   reason: "Quota exceeded but timeout failed",
                   messageCount: newCount,
@@ -426,7 +435,9 @@ client.on(Events.MessageCreate, async (message) => {
           message.guild?.id || "unknown",
           "message_tracking_error",
           null,
+          null,
           message.author?.id || "unknown",
+          message.author?.username || "unknown",
           {
             error: error.message,
             stack: error.stack,
