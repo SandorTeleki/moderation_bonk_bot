@@ -4,8 +4,10 @@
   "description": "Moderation Bonk Bot",
   "main": "index.js",
   "scripts": {
-    "test": "vitest --run",
+    "test": "vitest --run && node utils/test-cleanup.js",
     "test:watch": "vitest",
+    "test:cleanup": "node utils/test-cleanup.js",
+    "test:clean": "npm run test:cleanup",
     "deploy-commands": "node deploy-commands.js"
   },
   "author": "",
@@ -19,6 +21,7 @@
     "undici": "^7.13.0"
   },
   "devDependencies": {
+    "glob": "^11.0.3",
     "vitest": "^3.2.4"
   }
 }
