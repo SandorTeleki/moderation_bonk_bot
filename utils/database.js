@@ -735,7 +735,6 @@ class Database {
           reject(err);
           return;
         }
-        console.log("Database connection closed");
         this.db = null;
         resolve();
       });

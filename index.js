@@ -273,26 +273,50 @@ client.on(Events.GuildCreate, async (guild) => {
 });
 
 // Graceful shutdown handling
-process.on("SIGINT", async () => {
-  console.log("Received SIGINT, shutting down gracefully...");
-  try {
-    await database.close();
-    console.log("Database connection closed");
-  } catch (error) {
-    console.error("Error closing database:", error);
+let isShuttingDown = false;
+
+async function gracefulShutdown(signal) {
+  if (isShuttingDown) {
+    console.log(`Received ${signal} but shutdown already in progress...`);
+    return;
   }
+
+  isShuttingDown = true;
+  console.log(`Received ${signal}, shutting down gracefully...`);
+
+  try {
+    // Close database connection
+    if (database && database.db) {
+      await database.close();
+      console.log("Database connection closed");
+    }
+
+    // Destroy Discord client
+    if (client) {
+      client.destroy();
+      console.log("Discord client disconnected");
+    }
+  } catch (error) {
+    console.error("Error during shutdown:", error);
+  }
+
+  console.log("Shutdown complete");
   process.exit(0);
+}
+
+// Handle both SIGINT (Ctrl+C) and SIGTERM (process termination)
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+
+// Handle uncaught exceptions and unhandled rejections
+process.on("uncaughtException", (error) => {
+  console.error("Uncaught Exception:", error);
+  gracefulShutdown("UNCAUGHT_EXCEPTION");
 });
 
-process.on("SIGTERM", async () => {
-  console.log("Received SIGTERM, shutting down gracefully...");
-  try {
-    await database.close();
-    console.log("Database connection closed");
-  } catch (error) {
-    console.error("Error closing database:", error);
-  }
-  process.exit(0);
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Unhandled Rejection at:", promise, "reason:", reason);
+  gracefulShutdown("UNHANDLED_REJECTION");
 });
 
 client.login(token);
@@ -353,10 +377,17 @@ client.on(Events.MessageCreate, async (message) => {
             console.error("Failed to log auto timeout after retries:", error);
           }
 
-          // Send a notification to the channel
+          // Send a notification to the channel with Discord timestamp
           try {
+            // Calculate midnight UTC timestamp for Discord formatting
+            const now = new Date();
+            const nextDay = new Date(now);
+            nextDay.setUTCDate(now.getUTCDate() + 1);
+            nextDay.setUTCHours(0, 0, 0, 0);
+            const midnightUTCTimestamp = Math.floor(nextDay.getTime() / 1000);
+
             await message.channel.send({
-              content: `⚠️ ${message.author.username} has exceeded their daily message quota (${dailyLimit} messages) and has been timed out until midnight UTC.`,
+              content: `⚠️ ${message.author.username} has exceeded their daily message quota (${dailyLimit} messages) and has been timed out until <t:${midnightUTCTimestamp}:F> (midnight UTC).`,
             });
           } catch (error) {
             console.error("Failed to send quota exceeded notification:", error);
@@ -383,82 +414,6 @@ client.on(Events.MessageCreate, async (message) => {
             console.error("Failed to log timeout failure:", logError);
           }
         }
-      }
-    }
-    // Check if user has reached their quota limit exactly (send warning and timeout on next message)
-    else if (newCount === dailyLimit) {
-      try {
-        const warningMessage = await message.reply({
-          content: `⚠️ **${message.author.username}**, you have reached your daily message quota of **${dailyLimit} messages**. Your next message will result in a timeout until midnight UTC.`,
-        });
-
-        // Delete the warning message after 10 seconds to keep the channel clean
-        setTimeout(async () => {
-          try {
-            await warningMessage.delete();
-          } catch (error) {
-            // Ignore errors if message is already deleted
-          }
-        }, 10000);
-      } catch (error) {
-        console.error("Failed to send quota warning:", error);
-      }
-
-      // Log the warning
-      try {
-        await database.executeWithRetry(async () => {
-          return await database.logAction(
-            message.guild.id,
-            "quota_warning_sent",
-            null,
-            message.author.id,
-            {
-              messageCount: newCount,
-              quotaLimit: dailyLimit,
-              messagesRemaining: 0,
-            }
-          );
-        });
-      } catch (logError) {
-        console.error("Failed to log quota warning:", logError);
-      }
-    }
-    // Check if user has one message left (send warning)
-    else if (newCount === dailyLimit - 1) {
-      try {
-        const warningMessage = await message.reply({
-          content: `⚠️ **${message.author.username}**, you have **1 message left** before reaching your daily quota. Your next message will result in a timeout until midnight UTC.`,
-        });
-
-        // Delete the warning message after 10 seconds to keep the channel clean
-        setTimeout(async () => {
-          try {
-            await warningMessage.delete();
-          } catch (error) {
-            // Ignore errors if message is already deleted
-          }
-        }, 10000);
-      } catch (error) {
-        console.error("Failed to send quota warning:", error);
-      }
-
-      // Log the warning attempt
-      try {
-        await database.executeWithRetry(async () => {
-          return await database.logAction(
-            message.guild.id,
-            "quota_warning_sent",
-            null,
-            message.author.id,
-            {
-              messageCount: newCount,
-              quotaLimit: dailyLimit,
-              messagesRemaining: 1,
-            }
-          );
-        });
-      } catch (logError) {
-        console.error("Failed to log quota warning:", logError);
       }
     }
   } catch (error) {
