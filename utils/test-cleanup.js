@@ -17,7 +17,6 @@ function findFiles(dir, patterns, ignorePatterns = []) {
         const fullPath = path.join(currentDir, item);
         const relativePath = path.relative(process.cwd(), fullPath);
         
-        // Skip ignored directories
         if (ignorePatterns.some(pattern => relativePath.includes(pattern))) {
           continue;
         }
@@ -27,7 +26,6 @@ function findFiles(dir, patterns, ignorePatterns = []) {
         if (stat.isDirectory()) {
           searchDir(fullPath);
         } else if (stat.isFile()) {
-          // Check if file matches any pattern
           for (const pattern of patterns) {
             if (matchesPattern(item, pattern)) {
               results.push(fullPath);
@@ -49,7 +47,6 @@ function findFiles(dir, patterns, ignorePatterns = []) {
  * Simple pattern matching for file names
  */
 function matchesPattern(filename, pattern) {
-  // Convert simple glob patterns to regex
   const regexPattern = pattern
     .replace(/\./g, '\\.')
     .replace(/\*/g, '.*')
@@ -69,7 +66,6 @@ function cleanupTestArtifacts() {
   const ignorePatterns = ['node_modules', '.git', '.kiro'];
   
   try {
-    // Clean up backup database files
     const backupFiles = findFiles(process.cwd(), ['*.db.backup.*'], ignorePatterns);
     
     backupFiles.forEach(file => {
@@ -82,7 +78,6 @@ function cleanupTestArtifacts() {
       }
     });
     
-    // Clean up test database files
     const testDbFiles = findFiles(process.cwd(), ['test_*.db'], ignorePatterns);
     
     testDbFiles.forEach(file => {
@@ -95,7 +90,6 @@ function cleanupTestArtifacts() {
       }
     });
     
-    // Clean up any temporary test files
     const tempTestFiles = findFiles(process.cwd(), ['test_*.json', 'test_*.log', 'test_*.tmp'], ignorePatterns);
     
     tempTestFiles.forEach(file => {
@@ -120,7 +114,6 @@ function cleanupTestArtifacts() {
   }
 }
 
-// Run cleanup if called directly
 if (require.main === module) {
   const args = process.argv.slice(2);
   

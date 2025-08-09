@@ -1,8 +1,4 @@
-const {
-  SlashCommandBuilder,
-  PermissionsBitField,
-  MessageFlags,
-} = require("discord.js");
+const { SlashCommandBuilder, PermissionsBitField, MessageFlags } = require("discord.js");
 const database = require("../../utils/database.js");
 
 module.exports = {
@@ -32,43 +28,38 @@ module.exports = {
     const moderatorId = interaction.user.id;
 
     try {
-      // Get the target member
       const targetMember = await interaction.guild.members.fetch(targetUser.id);
 
       if (targetUser.id === interaction.client.user.id) {
         return await interaction.reply({
           content: "I never was on a watchlist, so you can't remove me!",
-          flags: MessageFlags.Ephemeral,
+          flags: MessageFlags.Ephemeral
         });
-      }
-      if (!targetMember) {
-        await interaction.reply({
-          content: `User ${targetUser.username} is not a member of this server.`,
-          flags: MessageFlags.Ephemeral,
-        });
-        return;
       }
 
-      // Find the watchlist role
+      if (!targetMember) {
+        return await interaction.reply({
+          content: `User ${targetUser.username} is not a member of this server.`,
+          flags: MessageFlags.Ephemeral
+        });
+      }
+
       const watchlistRole = interaction.guild.roles.cache.find(
         (role) => role.name.toLowerCase() === "watchlist"
       );
 
       if (!watchlistRole) {
-        await interaction.reply({
+        return await interaction.reply({
           content: `No watchlist role found in this server.`,
-          flags: MessageFlags.Ephemeral,
+          flags: MessageFlags.Ephemeral
         });
-        return;
       }
 
-      // Check if user has the role
       if (!targetMember.roles.cache.has(watchlistRole.id)) {
-        await interaction.reply({
+        return await interaction.reply({
           content: `${targetUser.username} is not on the watchlist.`,
-          flags: MessageFlags.Ephemeral,
+          flags: MessageFlags.Ephemeral
         });
-        return;
       }
 
       // Remove the role from the user
@@ -86,9 +77,6 @@ module.exports = {
             `Timeout removed - unwatchlisted by ${interaction.user.username}: ${reason}`
           );
           timeoutRemoved = true;
-          console.log(
-            `Removed timeout for ${targetUser.username} when unwatchlisted`
-          );
         } catch (timeoutError) {
           console.error(
             `Failed to remove timeout for ${targetUser.username}:`,
@@ -97,7 +85,6 @@ module.exports = {
         }
       }
 
-      // Log the action
       await database.logAction(
         guildId,
         "watchlist_remove",
@@ -108,12 +95,10 @@ module.exports = {
         { reason, timeoutRemoved }
       );
 
-      // Track command usage
       try {
         await database.incrementCommandUsage("unwatchlist");
       } catch (error) {
         console.error("Error tracking command usage:", error);
-        // Continue execution even if usage tracking fails
       }
 
       // Create response message
@@ -124,7 +109,7 @@ module.exports = {
 
       await interaction.reply({
         content: responseMessage,
-        flags: MessageFlags.Ephemeral,
+        flags: MessageFlags.Ephemeral
       });
     } catch (error) {
       console.error("Error removing user from watchlist:", error);

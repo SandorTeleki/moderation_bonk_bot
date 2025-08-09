@@ -3,25 +3,19 @@ const fs = require('fs');
 const path = require('path');
 const database = require('../utils/database');
 
-// Test database path - use a separate test database
 const testDbPath = path.join(__dirname, '..', 'test_logging.db');
 
 describe('Database Logging Operations', () => {
     beforeAll(async () => {
-        // Clean up any existing test database
         if (fs.existsSync(testDbPath)) {
             fs.unlinkSync(testDbPath);
         }
-        
-        // Override the database path for testing
         database.dbPath = testDbPath;
         
-        // Initialize the test database
         await database.initializeDatabase();
     });
 
     afterAll(async () => {
-        // Close database connection and clean up test database
         await database.close();
         if (fs.existsSync(testDbPath)) {
             fs.unlinkSync(testDbPath);
@@ -29,7 +23,6 @@ describe('Database Logging Operations', () => {
     });
 
     beforeEach(async () => {
-        // Clear logs table before each test
         await new Promise((resolve, reject) => {
             database.db.run('DELETE FROM logs', (err) => {
                 if (err) reject(err);
@@ -48,7 +41,6 @@ describe('Database Logging Operations', () => {
 
             await database.logAction(guildId, actionType, moderatorId, 'TestModerator', targetUserId, 'TestUser', details);
 
-            // Verify the log was created
             const result = await new Promise((resolve, reject) => {
                 database.db.get(
                     'SELECT * FROM logs WHERE guild_id = ? AND action_type = ?',
@@ -339,7 +331,6 @@ describe('Database Logging Operations', () => {
             });
             expect(logCount).toBe(5);
 
-            // Verify different action types exist
             const actionTypes = await new Promise((resolve, reject) => {
                 database.db.all(
                     'SELECT DISTINCT action_type FROM logs WHERE guild_id = ? ORDER BY action_type',

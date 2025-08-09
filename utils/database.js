@@ -24,12 +24,8 @@ class Database {
               err.message.includes("file is not a database") ||
               err.code === "SQLITE_NOTADB"
             ) {
-              console.log(
-                "Database appears to be corrupted, attempting recovery..."
-              );
               this.recoverCorruptedDatabase()
                 .then(() => {
-                  // Retry initialization after recovery
                   this.db = new sqlite3.Database(this.dbPath, (retryErr) => {
                     if (retryErr) {
                       console.error(
@@ -39,7 +35,6 @@ class Database {
                       reject(retryErr);
                       return;
                     }
-                    console.log("Database recovered and reconnected");
                     this.createTables()
                       .then(() => resolve())
                       .catch(reject);
@@ -55,21 +50,15 @@ class Database {
             reject(err);
             return;
           }
-          console.log("Connected to SQLite database");
           this.createTables()
             .then(() => resolve())
             .catch((createErr) => {
-              // Check if table creation failed due to corruption
               if (
                 createErr.message.includes("file is not a database") ||
                 createErr.code === "SQLITE_NOTADB"
               ) {
-                console.log(
-                  "Table creation failed due to corruption, attempting recovery..."
-                );
                 this.recoverCorruptedDatabase()
                   .then(() => {
-                    // Retry initialization after recovery
                     this.db = new sqlite3.Database(this.dbPath, (retryErr) => {
                       if (retryErr) {
                         console.error(
@@ -79,7 +68,6 @@ class Database {
                         reject(retryErr);
                         return;
                       }
-                      console.log("Database recovered and reconnected");
                       this.createTables()
                         .then(() => resolve())
                         .catch(reject);
@@ -274,7 +262,6 @@ class Database {
           return;
         }
 
-        // Get the updated count
         const getQuery =
           "SELECT message_count FROM daily_messages WHERE guild_id = ? AND user_id = ? AND date = ?";
         db.get(getQuery, [guildId, userId, date], (err, row) => {
@@ -532,7 +519,6 @@ class Database {
 
       const stats = {};
 
-      // Get count of quotas
       this.db.get("SELECT COUNT(*) as count FROM quotas", [], (err, row) => {
         if (err) {
           reject(err);
@@ -540,7 +526,6 @@ class Database {
         }
         stats.quotaCount = row.count;
 
-        // Get count of daily messages
         this.db.get(
           "SELECT COUNT(*) as count FROM daily_messages",
           [],
@@ -551,7 +536,6 @@ class Database {
             }
             stats.messageRecordCount = row.count;
 
-            // Get count of logs
             this.db.get(
               "SELECT COUNT(*) as count FROM logs",
               [],
@@ -562,7 +546,6 @@ class Database {
                 }
                 stats.logCount = row.count;
 
-                // Get oldest message record date
                 this.db.get(
                   "SELECT MIN(date) as oldest_date FROM daily_messages",
                   [],
@@ -573,7 +556,6 @@ class Database {
                     }
                     stats.oldestMessageDate = row.oldest_date;
 
-                    // Get oldest log timestamp
                     this.db.get(
                       "SELECT MIN(timestamp) as oldest_timestamp FROM logs",
                       [],
@@ -623,7 +605,6 @@ class Database {
           return;
         }
 
-        // Get the updated count
         const getQuery = "SELECT usage_count FROM command_usage WHERE command_name = ?";
         db.get(getQuery, [commandName], (err, row) => {
           if (err) {
@@ -649,17 +630,14 @@ class Database {
 
     return new Promise((resolve, reject) => {
       try {
-        // Backup the corrupted database file
         if (fs.existsSync(this.dbPath)) {
           fs.copyFileSync(this.dbPath, backupPath);
           console.log(`Corrupted database backed up to: ${backupPath}`);
 
-          // Remove the corrupted database
           fs.unlinkSync(this.dbPath);
           console.log("Corrupted database file removed");
         }
 
-        // Clean up old backup files (keep only last 5)
         this.cleanupOldBackups();
 
         resolve();
@@ -682,7 +660,6 @@ class Database {
       const dbDir = path.dirname(this.dbPath);
       const dbName = path.basename(this.dbPath);
 
-      // Find all backup files for this database
       const files = fs.readdirSync(dbDir);
       const backupFiles = files
         .filter((file) => file.startsWith(dbName + ".backup."))
@@ -693,7 +670,6 @@ class Database {
         }))
         .sort((a, b) => b.timestamp - a.timestamp); // Sort by timestamp, newest first
 
-      // Remove old backup files, keeping only the most recent ones
       if (backupFiles.length > keepCount) {
         const filesToDelete = backupFiles.slice(keepCount);
         filesToDelete.forEach((file) => {
@@ -759,7 +735,6 @@ class Database {
           error.message
         );
 
-        // If it's a database lock error, wait before retrying
         if (
           error.message.includes("database is locked") &&
           attempt < maxRetries
@@ -768,7 +743,6 @@ class Database {
           continue;
         }
 
-        // If it's the last attempt or a non-retryable error, throw
         if (attempt === maxRetries || !this.isRetryableError(error)) {
           break;
         }
@@ -818,7 +792,5 @@ class Database {
   }
 }
 
-// Create and export a singleton instance
 const database = new Database();
-
 module.exports = database;

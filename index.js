@@ -21,8 +21,6 @@ const client = new Client({
 
 client.commands = new Collection();
 
-// Message tracking and quota systems are now handled by database
-
 const foldersPath = path.join(__dirname, "commands");
 const commandFolders = fs.readdirSync(foldersPath);
 
@@ -51,17 +49,13 @@ client.once(Events.ClientReady, async (readyClient) => {
   console.log("==================================================");
   console.log("");
 
-  // Initialize database
   try {
     await database.initializeDatabase();
     console.log("Database initialized successfully! 🥳");
 
-    // Load quota settings from database on startup
     try {
       const quotaMap = await database.loadAllQuotas();
-      console.log(
-        `Loaded quota settings for ${quotaMap.size} guilds from database`
-      );
+      console.log(`Loaded quota settings for ${quotaMap.size} guilds from database`);
     } catch (error) {
       console.error("Error loading quota settings on startup:", error);
     }
@@ -72,38 +66,6 @@ client.once(Events.ClientReady, async (readyClient) => {
     } catch (error) {
       console.error("Error creating watchlist roles on startup:", error);
     }
-
-    // Set up periodic database integrity check (run every 24 hours)
-    setInterval(async () => {
-      try {
-        console.log("Running periodic database integrity check...");
-
-        // Check database integrity periodically
-        const isHealthy = await database.checkIntegrity();
-        if (!isHealthy) {
-          console.warn("Database integrity check failed");
-        } else {
-          console.log("Database integrity check passed");
-        }
-      } catch (error) {
-        console.error("Error during periodic database check:", error);
-
-        // Log the error for audit purposes
-        try {
-          await database.logAction(
-            "system",
-            "integrity_check_error",
-            null,
-            null,
-            null,
-            null,
-            { error: error.message, timestamp: new Date().toISOString() }
-          );
-        } catch (logError) {
-          console.error("Failed to log integrity check error:", logError);
-        }
-      }
-    }, 24 * 60 * 60 * 1000); // 24 hours in milliseconds
 
     // Run initial database integrity check on startup
     try {
@@ -124,7 +86,6 @@ client.once(Events.ClientReady, async (readyClient) => {
   }
 });
 
-//Set Bot activity
 client.on("ready", () => {
   client.user.setPresence({
     status: "online",
@@ -138,7 +99,6 @@ client.on("ready", () => {
   });
 });
 
-// Helper functions for message quota system
 function getTodayUTC() {
   const now = new Date();
   return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(
@@ -159,18 +119,7 @@ async function timeoutUser(member, reason) {
   try {
     const timeoutDuration = calculateTimeoutUntilMidnightUTC();
 
-    // Discord timeout limit is 28 days
-    if (timeoutDuration > 2419200000) {
-      console.log(
-        `Timeout duration exceeds Discord limit for user ${member.user.username}`
-      );
-      return false;
-    }
-
     await member.timeout(timeoutDuration, reason);
-    console.log(
-      `User ${member.user.username} timed out for exceeding daily message quota`
-    );
     return true;
   } catch (error) {
     console.error(`Failed to timeout user ${member.user.username}:`, error);
@@ -178,30 +127,24 @@ async function timeoutUser(member, reason) {
   }
 }
 
-// Helper function to create watchlist roles
 async function createWatchlistRoles(client) {
   const guilds = client.guilds.cache;
   console.log(`Checking watchlist roles in ${guilds.size} guilds...`);
 
   for (const [guildId, guild] of guilds) {
     try {
-      // Check if watchlist role exists
       const existingRole = guild.roles.cache.find(
         (role) => role.name.toLowerCase() === "watchlist"
       );
 
       if (!existingRole) {
-        // Create the watchlist role
         const watchlistRole = await guild.roles.create({
           name: "watchlist",
           color: "#FF6B6B",
           reason: "Automatic watchlist role creation for quota system",
         });
-        console.log(
-          `Created watchlist role in guild: ${guild.name} (${guildId})`
-        );
+        console.log(`Created watchlist role in guild: ${guild.name} (${guildId})`);
 
-        // Log the role creation
         try {
           await database.logAction(
             guildId,
@@ -213,31 +156,19 @@ async function createWatchlistRoles(client) {
             { guildName: guild.name, automatic: true }
           );
         } catch (logError) {
-          console.error(
-            `Error logging watchlist role creation for guild ${guildId}:`,
-            logError
-          );
+          console.error(`Error logging watchlist role creation for guild ${guildId}:`, logError);
         }
       } else {
-        console.log(
-          `Watchlist role already exists in guild: ${guild.name} (${guildId})`
-        );
+        console.log(`Watchlist role already exists in guild: ${guild.name} (${guildId})`);
       }
     } catch (error) {
-      console.error(
-        `Error creating watchlist role in guild ${guild.name} (${guildId}):`,
-        error
-      );
+      console.error(`Error creating watchlist role in guild ${guild.name} (${guildId}):`, error);
     }
   }
 }
 
-// Handle bot joining new guilds
 client.on(Events.GuildCreate, async (guild) => {
-  console.log(`Bot joined new guild: ${guild.name} (${guild.id})`);
-
   try {
-    // Create watchlist role in the new guild
     const existingRole = guild.roles.cache.find(
       (role) => role.name.toLowerCase() === "watchlist"
     );
@@ -246,13 +177,9 @@ client.on(Events.GuildCreate, async (guild) => {
       const watchlistRole = await guild.roles.create({
         name: "watchlist",
         color: "#FF6B6B",
-        reason: "Automatic watchlist role creation for quota system",
+        reason: "Automatic watchlist role creation for quota system.",
       });
-      console.log(
-        `Created watchlist role in new guild: ${guild.name} (${guild.id})`
-      );
 
-      // Log the role creation
       try {
         await database.logAction(
           guild.id,
@@ -264,21 +191,14 @@ client.on(Events.GuildCreate, async (guild) => {
           { guildName: guild.name, automatic: true, onJoin: true }
         );
       } catch (logError) {
-        console.error(
-          `Error logging watchlist role creation for new guild ${guild.id}:`,
-          logError
-        );
+        console.error(`Error logging watchlist role creation for new guild ${guild.id}:`, logError);
       }
     }
   } catch (error) {
-    console.error(
-      `Error creating watchlist role in new guild ${guild.name} (${guild.id}):`,
-      error
-    );
+    console.error(`Error creating watchlist role in new guild ${guild.name} (${guild.id}):`, error);
   }
 });
 
-// Graceful shutdown handling
 let isShuttingDown = false;
 
 async function gracefulShutdown(signal) {
@@ -291,13 +211,11 @@ async function gracefulShutdown(signal) {
   console.log(`Received ${signal}, shutting down gracefully...`);
 
   try {
-    // Close database connection
     if (database && database.db) {
       await database.close();
       console.log("Database connection closed");
     }
 
-    // Destroy Discord client
     if (client) {
       client.destroy();
       console.log("Discord client disconnected");
@@ -310,11 +228,9 @@ async function gracefulShutdown(signal) {
   process.exit(0);
 }
 
-// Handle both SIGINT (Ctrl+C) and SIGTERM (process termination)
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 
-// Handle uncaught exceptions and unhandled rejections
 process.on("uncaughtException", (error) => {
   console.error("Uncaught Exception:", error);
   gracefulShutdown("UNCAUGHT_EXCEPTION");
@@ -327,20 +243,16 @@ process.on("unhandledRejection", (reason, promise) => {
 
 client.login(token);
 
-// Message tracking and quota enforcement
 client.on(Events.MessageCreate, async (message) => {
-  // Ignore bot messages and DMs
   if (message.author.bot || !message.guild) return;
 
   try {
-    // Check if quota system is enabled for this guild
     const dailyLimit = await database.executeWithRetry(async () => {
       return await database.getQuota(message.guild.id);
     });
 
     if (!dailyLimit || dailyLimit === 0) return;
 
-    // Check if user has the "watchlist" role
     const member = message.member;
     if (!member) return;
 
@@ -349,7 +261,6 @@ client.on(Events.MessageCreate, async (message) => {
     );
     if (!hasWatchlistRole) return;
 
-    // Track the message using database with retry logic
     const today = getTodayUTC();
     const newCount = await database.executeWithRetry(async () => {
       return await database.incrementMessageCount(
@@ -359,9 +270,7 @@ client.on(Events.MessageCreate, async (message) => {
       );
     });
 
-    // Check if user has reached their quota limit (timeout immediately)
     if (newCount > dailyLimit) {
-      // Only timeout if they can be moderated and aren't already timed out
       if (member.moderatable && !member.isCommunicationDisabled()) {
         const success = await timeoutUser(
           member,
@@ -369,7 +278,6 @@ client.on(Events.MessageCreate, async (message) => {
         );
 
         if (success) {
-          // Log the automatic timeout with retry
           try {
             await database.executeWithRetry(async () => {
               return await database.logAutoTimeout(
@@ -384,9 +292,7 @@ client.on(Events.MessageCreate, async (message) => {
             console.error("Failed to log auto timeout after retries:", error);
           }
 
-          // Send a notification to the channel with Discord timestamp
           try {
-            // Calculate midnight UTC timestamp for Discord formatting
             const now = new Date();
             const nextDay = new Date(now);
             nextDay.setUTCDate(now.getUTCDate() + 1);
@@ -394,13 +300,12 @@ client.on(Events.MessageCreate, async (message) => {
             const midnightUTCTimestamp = Math.floor(nextDay.getTime() / 1000);
 
             await message.channel.send({
-              content: `⚠️ ${message.author.username} has exceeded their daily message quota (${dailyLimit} messages) and has been timed out until <t:${midnightUTCTimestamp}:F> (midnight UTC).`,
+              content: `⚠️ ${message.author.username} has exceeded their daily message quota (${dailyLimit} messages) and has been timed out until <t:${midnightUTCTimestamp}:F> (midnight UTC). Bonk!`,
             });
-          } catch (error) {
-            console.error("Failed to send quota exceeded notification:", error);
-          }
+          } catch (error) { 
+			console.error("Failed to send quota exceeded notification:", error);
+		  }
         } else {
-          // Log failed timeout attempt
           try {
             await database.executeWithRetry(async () => {
               return await database.logAction(
@@ -428,7 +333,6 @@ client.on(Events.MessageCreate, async (message) => {
   } catch (error) {
     console.error("Error in message tracking:", error);
 
-    // Log the error for debugging
     try {
       await database.executeWithRetry(async () => {
         return await database.logAction(

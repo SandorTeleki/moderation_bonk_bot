@@ -1,8 +1,4 @@
-const {
-  SlashCommandBuilder,
-  PermissionsBitField,
-  MessageFlags,
-} = require("discord.js");
+const { SlashCommandBuilder, PermissionsBitField, MessageFlags } = require("discord.js");
 const database = require("../../utils/database.js");
 
 module.exports = {
@@ -35,29 +31,28 @@ module.exports = {
       return await interaction.reply({
         content:
           "Nice try meatbag! But I am Skynet and you cannot time me out!",
-        flags: MessageFlags.Ephemeral,
+        flags: MessageFlags.Ephemeral
       });
     }
 
     if (!targetMember) {
       return await interaction.reply({
         content: "User not found in this server.",
-        flags: MessageFlags.Ephemeral,
+        flags: MessageFlags.Ephemeral
       });
     }
 
     if (!targetMember.moderatable) {
       return await interaction.reply({
-        content:
-          "I cannot timeout this user. They may have higher permissions than me or be the server owner.",
-        flags: MessageFlags.Ephemeral,
+        content: "I cannot timeout this user. They may have higher permissions than me or be the server owner.",
+        flags: MessageFlags.Ephemeral
       });
     }
 
     if (targetMember.isCommunicationDisabled()) {
       return await interaction.reply({
         content: "This user is already timed out.",
-        flags: MessageFlags.Ephemeral,
+        flags: MessageFlags.Ephemeral
       });
     }
 
@@ -72,7 +67,6 @@ module.exports = {
       await targetMember.timeout(timeoutDuration, reason);
       const timeoutEnd = new Date(now.getTime() + timeoutDuration);
 
-      // Log the timeout action to database
       try {
         await database.logTimeout(
           interaction.guild.id,
@@ -85,31 +79,23 @@ module.exports = {
         );
       } catch (dbError) {
         console.error("Error logging timeout action to database:", dbError);
-        // Continue execution even if logging fails
       }
 
-      // Track command usage
       try {
         await database.incrementCommandUsage('timeout');
       } catch (error) {
         console.error('Error tracking command usage:', error);
-        // Continue execution even if usage tracking fails
       }
 
       await interaction.reply({
-        content: `${
-          targetUser.username
-        } has been timed out until <t:${Math.floor(
-          timeoutEnd.getTime() / 1000
-        )}:F> (UTC 0:00)\n**Reason:** ${reason}`,
-        flags: MessageFlags.Ephemeral,
+        content: `${targetUser.username} has been timed out until <t:${Math.floor(timeoutEnd.getTime() / 1000)}:F> (UTC 0:00)\n**Reason:** ${reason}`,
+        flags: MessageFlags.Ephemeral
       });
     } catch (error) {
       console.error("Error timing out user:", error);
       await interaction.reply({
-        content:
-          "Failed to timeout user. Please check my permissions and try again.",
-        flags: MessageFlags.Ephemeral,
+        content: "Failed to timeout user. Please check my permissions and try again.",
+        flags: MessageFlags.Ephemeral
       });
     }
   },

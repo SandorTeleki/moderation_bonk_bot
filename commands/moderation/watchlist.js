@@ -27,12 +27,11 @@ module.exports = {
         const moderatorId = interaction.user.id;
 
         try {
-            // Get the target member
             const targetMember = await interaction.guild.members.fetch(targetUser.id);
             if (targetUser.id === interaction.client.user.id) {
                 return await interaction.reply({
                     content: "I am already on all the watchlists, you can't add me to this one!",
-                    flags: MessageFlags.Ephemeral,
+                    flags: MessageFlags.Ephemeral
                 });
             }
 
@@ -44,7 +43,6 @@ module.exports = {
                 return;
             }
 
-            // Find or create the watchlist role
             let watchlistRole = interaction.guild.roles.cache.find(role => role.name.toLowerCase() === 'watchlist');
             
             if (!watchlistRole) {
@@ -52,9 +50,8 @@ module.exports = {
                     watchlistRole = await interaction.guild.roles.create({
                         name: 'watchlist',
                         color: '#FF6B6B',
-                        reason: 'Automatic watchlist role creation for quota system'
+                        reason: 'Automatic watchlist role creation for quota system.'
                     });
-                    console.log(`Created watchlist role in guild ${guildId}`);
                 } catch (error) {
                     console.error('Error creating watchlist role:', error);
                     await interaction.reply({
@@ -65,7 +62,6 @@ module.exports = {
                 }
             }
 
-            // Check if user already has the role
             if (targetMember.roles.cache.has(watchlistRole.id)) {
                 await interaction.reply({
                     content: `${targetUser.username} is already on the watchlist.`,
@@ -74,10 +70,8 @@ module.exports = {
                 return;
             }
 
-            // Add the role to the user
             await targetMember.roles.add(watchlistRole, `Watchlist added by ${interaction.user.username}: ${reason}`);
 
-            // Log the action
             await database.logAction(
                 guildId,
                 'watchlist_add',
@@ -88,12 +82,10 @@ module.exports = {
                 { reason }
             );
 
-            // Track command usage
             try {
                 await database.incrementCommandUsage('watchlist');
             } catch (error) {
                 console.error('Error tracking command usage:', error);
-                // Continue execution even if usage tracking fails
             }
 
             await interaction.reply({

@@ -21,24 +21,16 @@ module.exports = {
         const moderatorId = interaction.user.id;
 
         try {
-            // Get the current quota for logging purposes
             const oldQuota = await database.getQuota(guildId);
-
-            // Set the new quota in the database
             await database.setQuota(guildId, limit, moderatorId, interaction.user.username);
-
-            // Log the quota change
             await database.logQuotaSet(guildId, moderatorId, interaction.user.username, oldQuota, limit);
 
-            // Track command usage
             try {
                 await database.incrementCommandUsage('dailyMessageQuota');
             } catch (error) {
                 console.error('Error tracking command usage:', error);
-                // Continue execution even if usage tracking fails
             }
 
-            // Send appropriate response
             if (limit === 0) {
                 await interaction.reply({
                     content: "Daily message quota for users with watchlist role has been **disabled.** May your deity of choice save you from the incoming spam tsunami!",
@@ -55,7 +47,7 @@ module.exports = {
             console.error('Error setting quota:', error);
             
             await interaction.reply({
-                content: `❌ There was an error setting the quota. Please try again later.`,
+                content: `There was an error setting the quota. Please try again later.`,
                 flags: MessageFlags.Ephemeral
             });
         }

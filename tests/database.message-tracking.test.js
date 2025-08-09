@@ -3,25 +3,20 @@ const fs = require('fs');
 const path = require('path');
 const database = require('../utils/database');
 
-// Test database path - use a separate test database
 const testDbPath = path.join(__dirname, '..', 'test_message_tracking.db');
 
 describe('Database Message Tracking', () => {
     beforeAll(async () => {
-        // Clean up any existing test database
         if (fs.existsSync(testDbPath)) {
             fs.unlinkSync(testDbPath);
         }
         
-        // Override the database path for testing
         database.dbPath = testDbPath;
         
-        // Initialize the test database
         await database.initializeDatabase();
     });
 
     afterAll(async () => {
-        // Close database connection and clean up test database
         await database.close();
         if (fs.existsSync(testDbPath)) {
             fs.unlinkSync(testDbPath);
@@ -29,7 +24,6 @@ describe('Database Message Tracking', () => {
     });
 
     beforeEach(async () => {
-        // Clear daily_messages table before each test
         await new Promise((resolve, reject) => {
             database.db.run('DELETE FROM daily_messages', (err) => {
                 if (err) reject(err);
@@ -45,11 +39,9 @@ describe('Database Message Tracking', () => {
         });
 
         it('should return correct count for existing user/date', async () => {
-            // First increment count to create record
             await database.incrementMessageCount('guild_123', 'user_456', '2024-01-01');
             await database.incrementMessageCount('guild_123', 'user_456', '2024-01-01');
             
-            // Then retrieve count
             const count = await database.getMessageCount('guild_123', 'user_456', '2024-01-01');
             expect(count).toBe(2);
         });
@@ -58,12 +50,10 @@ describe('Database Message Tracking', () => {
             const guildId = 'guild_123';
             const userId = 'user_456';
             
-            // Increment for different dates
             await database.incrementMessageCount(guildId, userId, '2024-01-01');
             await database.incrementMessageCount(guildId, userId, '2024-01-01');
             await database.incrementMessageCount(guildId, userId, '2024-01-02');
             
-            // Verify counts are independent
             const count1 = await database.getMessageCount(guildId, userId, '2024-01-01');
             const count2 = await database.getMessageCount(guildId, userId, '2024-01-02');
             
@@ -75,12 +65,10 @@ describe('Database Message Tracking', () => {
             const guildId = 'guild_123';
             const date = '2024-01-01';
             
-            // Increment for different users
             await database.incrementMessageCount(guildId, 'user_1', date);
             await database.incrementMessageCount(guildId, 'user_1', date);
             await database.incrementMessageCount(guildId, 'user_2', date);
             
-            // Verify counts are independent
             const count1 = await database.getMessageCount(guildId, 'user_1', date);
             const count2 = await database.getMessageCount(guildId, 'user_2', date);
             
@@ -92,12 +80,10 @@ describe('Database Message Tracking', () => {
             const userId = 'user_456';
             const date = '2024-01-01';
             
-            // Increment for different guilds
             await database.incrementMessageCount('guild_1', userId, date);
             await database.incrementMessageCount('guild_1', userId, date);
             await database.incrementMessageCount('guild_2', userId, date);
             
-            // Verify counts are independent
             const count1 = await database.getMessageCount('guild_1', userId, date);
             const count2 = await database.getMessageCount('guild_2', userId, date);
             
@@ -125,21 +111,17 @@ describe('Database Message Tracking', () => {
             const count = await database.incrementMessageCount('guild_123', 'user_456', '2024-01-01');
             expect(count).toBe(1);
             
-            // Verify it was stored correctly
             const storedCount = await database.getMessageCount('guild_123', 'user_456', '2024-01-01');
             expect(storedCount).toBe(1);
         });
 
         it('should increment existing count', async () => {
-            // First message
             let count = await database.incrementMessageCount('guild_123', 'user_456', '2024-01-01');
             expect(count).toBe(1);
             
-            // Second message
             count = await database.incrementMessageCount('guild_123', 'user_456', '2024-01-01');
             expect(count).toBe(2);
             
-            // Third message
             count = await database.incrementMessageCount('guild_123', 'user_456', '2024-01-01');
             expect(count).toBe(3);
         });
@@ -149,13 +131,11 @@ describe('Database Message Tracking', () => {
             const userId = 'user_456';
             const date = '2024-01-01';
             
-            // Increment multiple times
             for (let i = 1; i <= 10; i++) {
                 const count = await database.incrementMessageCount(guildId, userId, date);
                 expect(count).toBe(i);
             }
             
-            // Verify final count
             const finalCount = await database.getMessageCount(guildId, userId, date);
             expect(finalCount).toBe(10);
         });
@@ -165,10 +145,8 @@ describe('Database Message Tracking', () => {
             const userId = 'user_456';
             const date = '2024-01-01';
             
-            // First increment
             await database.incrementMessageCount(guildId, userId, date);
             
-            // Get initial timestamp
             const initialResult = await new Promise((resolve, reject) => {
                 database.db.get(
                     'SELECT last_updated FROM daily_messages WHERE guild_id = ? AND user_id = ? AND date = ?',
@@ -180,13 +158,10 @@ describe('Database Message Tracking', () => {
                 );
             });
             
-            // Wait a moment to ensure timestamp difference
             await new Promise(resolve => setTimeout(resolve, 1000));
             
-            // Second increment
             await database.incrementMessageCount(guildId, userId, date);
             
-            // Get updated timestamp
             const updatedResult = await new Promise((resolve, reject) => {
                 database.db.get(
                     'SELECT last_updated FROM daily_messages WHERE guild_id = ? AND user_id = ? AND date = ?',
@@ -198,7 +173,6 @@ describe('Database Message Tracking', () => {
                 );
             });
             
-            // Timestamps should be different
             expect(initialResult.last_updated).not.toBe(updatedResult.last_updated);
         });
 
@@ -223,13 +197,11 @@ describe('Database Message Tracking', () => {
             const userId = 'user_456';
             const date = '2024-01-01';
             
-            // First increment count
             await database.incrementMessageCount(guildId, userId, date);
             await database.incrementMessageCount(guildId, userId, date);
             let count = await database.getMessageCount(guildId, userId, date);
             expect(count).toBe(2);
             
-            // Reset count
             await database.resetMessageCount(guildId, userId, date);
             count = await database.getMessageCount(guildId, userId, date);
             expect(count).toBe(0);
@@ -240,10 +212,8 @@ describe('Database Message Tracking', () => {
             const userId = 'user_456';
             const date = '2024-01-01';
             
-            // Reset count for non-existent record
             await database.resetMessageCount(guildId, userId, date);
             
-            // Verify count is 0
             const count = await database.getMessageCount(guildId, userId, date);
             expect(count).toBe(0);
         });
@@ -253,16 +223,12 @@ describe('Database Message Tracking', () => {
             const userId = 'user_456';
             const date = '2024-01-01';
             
-            // Create initial record
             await database.incrementMessageCount(guildId, userId, date);
             
-            // Wait a moment to ensure timestamp difference
             await new Promise(resolve => setTimeout(resolve, 1000));
             
-            // Reset count
             await database.resetMessageCount(guildId, userId, date);
             
-            // Verify timestamp was updated
             const result = await new Promise((resolve, reject) => {
                 database.db.get(
                     'SELECT last_updated FROM daily_messages WHERE guild_id = ? AND user_id = ? AND date = ?',
@@ -283,7 +249,6 @@ describe('Database Message Tracking', () => {
             const userId = 'user_456';
             const date = '2024-01-01';
             
-            // Increment, reset, then increment again
             await database.incrementMessageCount(guildId, userId, date);
             await database.resetMessageCount(guildId, userId, date);
             const count = await database.incrementMessageCount(guildId, userId, date);
@@ -313,28 +278,23 @@ describe('Database Message Tracking', () => {
             const date1 = '2024-01-01';
             const date2 = '2024-01-02';
             
-            // Day 1: Send 5 messages
             for (let i = 1; i <= 5; i++) {
                 const count = await database.incrementMessageCount(guildId, userId, date1);
                 expect(count).toBe(i);
             }
             
-            // Day 2: Send 3 messages
             for (let i = 1; i <= 3; i++) {
                 const count = await database.incrementMessageCount(guildId, userId, date2);
                 expect(count).toBe(i);
             }
             
-            // Verify counts
             expect(await database.getMessageCount(guildId, userId, date1)).toBe(5);
             expect(await database.getMessageCount(guildId, userId, date2)).toBe(3);
             
-            // Reset day 1
             await database.resetMessageCount(guildId, userId, date1);
             expect(await database.getMessageCount(guildId, userId, date1)).toBe(0);
             expect(await database.getMessageCount(guildId, userId, date2)).toBe(3); // Should remain unchanged
             
-            // Continue on day 1 after reset
             const newCount = await database.incrementMessageCount(guildId, userId, date1);
             expect(newCount).toBe(1);
         });
@@ -342,7 +302,6 @@ describe('Database Message Tracking', () => {
         it('should handle multiple users and guilds simultaneously', async () => {
             const date = '2024-01-01';
             
-            // Set up test data
             const testCases = [
                 { guild: 'guild_1', user: 'user_1', expectedCount: 3 },
                 { guild: 'guild_1', user: 'user_2', expectedCount: 2 },
@@ -350,14 +309,12 @@ describe('Database Message Tracking', () => {
                 { guild: 'guild_2', user: 'user_2', expectedCount: 1 }
             ];
             
-            // Increment messages for each test case
             for (const testCase of testCases) {
                 for (let i = 0; i < testCase.expectedCount; i++) {
                     await database.incrementMessageCount(testCase.guild, testCase.user, date);
                 }
             }
             
-            // Verify all counts are correct
             for (const testCase of testCases) {
                 const count = await database.getMessageCount(testCase.guild, testCase.user, date);
                 expect(count).toBe(testCase.expectedCount);
@@ -369,7 +326,6 @@ describe('Database Message Tracking', () => {
             const userId = 'concurrent_user';
             const date = '2024-01-01';
             
-            // Perform multiple concurrent increments
             const promises = [];
             for (let i = 0; i < 10; i++) {
                 promises.push(database.incrementMessageCount(guildId, userId, date));
@@ -377,13 +333,11 @@ describe('Database Message Tracking', () => {
             
             const results = await Promise.all(promises);
             
-            // All operations should succeed and return valid counts
             results.forEach(count => {
                 expect(count).toBeGreaterThan(0);
                 expect(count).toBeLessThanOrEqual(10);
             });
             
-            // Final count should be 10
             const finalCount = await database.getMessageCount(guildId, userId, date);
             expect(finalCount).toBe(10);
         });
@@ -393,7 +347,6 @@ describe('Database Message Tracking', () => {
             const userId = 'integrity_user';
             const date = '2024-01-01';
             
-            // Perform mixed operations
             await database.incrementMessageCount(guildId, userId, date); // 1
             await database.incrementMessageCount(guildId, userId, date); // 2
             await database.resetMessageCount(guildId, userId, date);     // 0
@@ -404,7 +357,6 @@ describe('Database Message Tracking', () => {
             const finalCount = await database.getMessageCount(guildId, userId, date);
             expect(finalCount).toBe(3);
             
-            // Verify database record exists and is correct
             const dbRecord = await new Promise((resolve, reject) => {
                 database.db.get(
                     'SELECT * FROM daily_messages WHERE guild_id = ? AND user_id = ? AND date = ?',
