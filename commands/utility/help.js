@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionsBitField } = require('@discordjs/builders');
+const { SlashCommandBuilder, PermissionsBitField } = require("discord.js");
 
 const { getHelpEmbed } = require('../../utils/helpEmbed');
 
