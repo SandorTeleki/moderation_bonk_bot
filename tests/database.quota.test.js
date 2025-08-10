@@ -39,15 +39,15 @@ describe('Database Quota Management', () => {
         });
 
         it('should return correct quota for existing guild', async () => {
-            await database.setQuota('test_guild_123', 15, 'test_user_456', 'TestUser');
+            await database.setQuota('test_guild_123', 'TestGuild', 15, 'test_user_456', 'TestUser');
             
             const quota = await database.getQuota('test_guild_123');
             expect(quota).toBe(15);
         });
 
         it('should handle multiple guilds independently', async () => {
-            await database.setQuota('guild_1', 10, 'user_1', 'TestUser1');
-            await database.setQuota('guild_2', 20, 'user_2', 'TestUser2');
+            await database.setQuota('guild_1', 'Guild1', 10, 'user_1', 'TestUser1');
+            await database.setQuota('guild_2', 'Guild2', 20, 'user_2', 'TestUser2');
             
             const quota1 = await database.getQuota('guild_1');
             const quota2 = await database.getQuota('guild_2');
@@ -73,31 +73,31 @@ describe('Database Quota Management', () => {
 
     describe('setQuota', () => {
         it('should set quota for new guild', async () => {
-            await database.setQuota('new_guild_123', 25, 'moderator_456', 'TestModerator');
+            await database.setQuota('new_guild_123', 'NewGuild', 25, 'moderator_456', 'TestModerator');
             
             const quota = await database.getQuota('new_guild_123');
             expect(quota).toBe(25);
         });
 
         it('should update existing quota', async () => {
-            await database.setQuota('update_guild_123', 10, 'moderator_1', 'TestMod1');
+            await database.setQuota('update_guild_123', 'UpdateGuild', 10, 'moderator_1', 'TestMod1');
             let quota = await database.getQuota('update_guild_123');
             expect(quota).toBe(10);
             
-            await database.setQuota('update_guild_123', 30, 'moderator_2', 'TestMod2');
+            await database.setQuota('update_guild_123', 'UpdateGuild', 30, 'moderator_2', 'TestMod2');
             quota = await database.getQuota('update_guild_123');
             expect(quota).toBe(30);
         });
 
         it('should handle zero quota (disabled)', async () => {
-            await database.setQuota('disabled_guild_123', 0, 'moderator_789', 'TestMod');
+            await database.setQuota('disabled_guild_123', 'DisabledGuild', 0, 'moderator_789', 'TestMod');
             
             const quota = await database.getQuota('disabled_guild_123');
             expect(quota).toBe(0);
         });
 
         it('should store updatedBy information', async () => {
-            await database.setQuota('tracked_guild_123', 15, 'specific_moderator_456', 'SpecificMod');
+            await database.setQuota('tracked_guild_123', 'TrackedGuild', 15, 'specific_moderator_456', 'SpecificMod');
             
             const result = await new Promise((resolve, reject) => {
                 database.db.get(
@@ -114,7 +114,7 @@ describe('Database Quota Management', () => {
         });
 
         it('should update timestamp on quota change', async () => {
-            await database.setQuota('timestamp_guild_123', 10, 'moderator_1', 'TestMod1');
+            await database.setQuota('timestamp_guild_123', 'TimestampGuild', 10, 'moderator_1', 'TestMod1');
             
             const initialResult = await new Promise((resolve, reject) => {
                 database.db.get(
@@ -129,7 +129,7 @@ describe('Database Quota Management', () => {
             
             await new Promise(resolve => setTimeout(resolve, 1000));
             
-            await database.setQuota('timestamp_guild_123', 20, 'moderator_2', 'TestMod2');
+            await database.setQuota('timestamp_guild_123', 'TimestampGuild', 20, 'moderator_2', 'TestMod2');
             
             const updatedResult = await new Promise((resolve, reject) => {
                 database.db.get(
@@ -150,7 +150,7 @@ describe('Database Quota Management', () => {
             database.db = null;
             
             try {
-                await database.setQuota('test_guild', 10, 'test_user', 'TestUser');
+                await database.setQuota('test_guild', 'TestGuild', 10, 'test_user', 'TestUser');
                 expect.fail('Should have thrown an error');
             } catch (error) {
                 expect(error.message).toBe('Database not initialized');
@@ -161,14 +161,14 @@ describe('Database Quota Management', () => {
 
         it('should handle large quota values', async () => {
             const largeQuota = 999999;
-            await database.setQuota('large_quota_guild', largeQuota, 'test_moderator', 'TestMod');
+            await database.setQuota('large_quota_guild', 'LargeQuotaGuild', largeQuota, 'test_moderator', 'TestMod');
             
             const quota = await database.getQuota('large_quota_guild');
             expect(quota).toBe(largeQuota);
         });
 
         it('should handle negative quota values (edge case)', async () => {
-            await database.setQuota('negative_guild', -1, 'test_moderator', 'TestMod');
+            await database.setQuota('negative_guild', 'NegativeGuild', -1, 'test_moderator', 'TestMod');
             
             const quota = await database.getQuota('negative_guild');
             expect(quota).toBe(-1);
@@ -180,19 +180,19 @@ describe('Database Quota Management', () => {
             const guildId = 'persistence_test_guild';
             const moderatorId = 'test_moderator';
             
-            await database.setQuota(guildId, 5, moderatorId, 'TestMod');
+            await database.setQuota(guildId, 'TestGuild', 5, moderatorId, 'TestMod');
             expect(await database.getQuota(guildId)).toBe(5);
             
-            await database.setQuota(guildId, 10, moderatorId, 'TestMod');
+            await database.setQuota(guildId, 'TestGuild', 10, moderatorId, 'TestMod');
             expect(await database.getQuota(guildId)).toBe(10);
             
-            await database.setQuota(guildId, 15, moderatorId, 'TestMod');
+            await database.setQuota(guildId, 'TestGuild', 15, moderatorId, 'TestMod');
             expect(await database.getQuota(guildId)).toBe(15);
             
-            await database.setQuota(guildId, 0, moderatorId, 'TestMod');
+            await database.setQuota(guildId, 'TestGuild', 0, moderatorId, 'TestMod');
             expect(await database.getQuota(guildId)).toBe(0);
             
-            await database.setQuota(guildId, 20, moderatorId, 'TestMod');
+            await database.setQuota(guildId, 'TestGuild', 20, moderatorId, 'TestMod');
             expect(await database.getQuota(guildId)).toBe(20);
         });
 
@@ -200,9 +200,9 @@ describe('Database Quota Management', () => {
             const guildId = 'concurrent_test_guild';
             
             const promises = [
-                database.setQuota(guildId, 10, 'moderator_1', 'TestMod1'),
-                database.setQuota(guildId, 20, 'moderator_2', 'TestMod2'),
-                database.setQuota(guildId, 30, 'moderator_3', 'TestMod3')
+                database.setQuota(guildId, 'TestGuild', 10, 'moderator_1', 'TestMod1'),
+                database.setQuota(guildId, 'TestGuild', 20, 'moderator_2', 'TestMod2'),
+                database.setQuota(guildId, 'TestGuild', 30, 'moderator_3', 'TestMod3')
             ];
             
             await Promise.all(promises);

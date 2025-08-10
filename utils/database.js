@@ -97,6 +97,7 @@ class Database {
     const quotasTable = `
             CREATE TABLE IF NOT EXISTS quotas (
                 guild_id TEXT PRIMARY KEY,
+                guild_name TEXT,
                 daily_limit INTEGER NOT NULL DEFAULT 0,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_by TEXT,
@@ -108,7 +109,9 @@ class Database {
             CREATE TABLE IF NOT EXISTS daily_messages (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 guild_id TEXT NOT NULL,
+                guild_name TEXT,
                 user_id TEXT NOT NULL,
+                user_name TEXT,
                 date TEXT NOT NULL,
                 message_count INTEGER DEFAULT 0,
                 last_updated DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -203,12 +206,13 @@ class Database {
   /**
    * Set quota for a guild
    * @param {string} guildId - Discord guild ID
+   * @param {string} guildName - Discord guild name
    * @param {number} limit - Daily message limit
    * @param {string} updatedBy - User ID who updated the quota
    * @param {string} updatedByUsername - Username who updated the quota
    * @returns {Promise<void>}
    */
-  async setQuota(guildId, limit, updatedBy, updatedByUsername) {
+  async setQuota(guildId, guildName, limit, updatedBy, updatedByUsername) {
     return new Promise((resolve, reject) => {
       if (!this.db) {
         reject(new Error("Database not initialized"));
@@ -216,11 +220,11 @@ class Database {
       }
 
       const query = `
-                INSERT OR REPLACE INTO quotas (guild_id, daily_limit, updated_by, updated_by_username, updated_at)
-                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+                INSERT OR REPLACE INTO quotas (guild_id, guild_name, daily_limit, updated_by, updated_by_username, updated_at)
+                VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             `;
 
-      this.db.run(query, [guildId, limit, updatedBy, updatedByUsername], function (err) {
+      this.db.run(query, [guildId, guildName, limit, updatedBy, updatedByUsername], function (err) {
         if (err) {
           console.error("Error setting quota:", err.message);
           reject(err);
@@ -234,11 +238,13 @@ class Database {
   /**
    * Increment message count for a user on a specific date
    * @param {string} guildId - Discord guild ID
+   * @param {string} guildName - Discord guild name
    * @param {string} userId - Discord user ID
+   * @param {string} userName - Discord username
    * @param {string} date - Date in YYYY-MM-DD format
    * @returns {Promise<number>} - New message count
    */
-  async incrementMessageCount(guildId, userId, date) {
+  async incrementMessageCount(guildId, guildName, userId, userName, date) {
     return new Promise((resolve, reject) => {
       if (!this.db) {
         reject(new Error("Database not initialized"));
@@ -246,16 +252,18 @@ class Database {
       }
 
       const query = `
-                INSERT INTO daily_messages (guild_id, user_id, date, message_count, last_updated)
-                VALUES (?, ?, ?, 1, CURRENT_TIMESTAMP)
+                INSERT INTO daily_messages (guild_id, guild_name, user_id, user_name, date, message_count, last_updated)
+                VALUES (?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
                 ON CONFLICT(guild_id, user_id, date) 
                 DO UPDATE SET 
                     message_count = message_count + 1,
+                    guild_name = ?,
+                    user_name = ?,
                     last_updated = CURRENT_TIMESTAMP
             `;
 
       const db = this.db; // Store reference to avoid context issues
-      db.run(query, [guildId, userId, date], function (err) {
+      db.run(query, [guildId, guildName, userId, userName, date, guildName, userName], function (err) {
         if (err) {
           console.error("Error incrementing message count:", err.message);
           reject(err);
@@ -306,11 +314,13 @@ class Database {
   /**
    * Reset message count for a user on a specific date
    * @param {string} guildId - Discord guild ID
+   * @param {string} guildName - Discord guild name
    * @param {string} userId - Discord user ID
+   * @param {string} userName - Discord username
    * @param {string} date - Date in YYYY-MM-DD format
    * @returns {Promise<void>}
    */
-  async resetMessageCount(guildId, userId, date) {
+  async resetMessageCount(guildId, guildName, userId, userName, date) {
     return new Promise((resolve, reject) => {
       if (!this.db) {
         reject(new Error("Database not initialized"));
@@ -318,11 +328,11 @@ class Database {
       }
 
       const query = `
-                INSERT OR REPLACE INTO daily_messages (guild_id, user_id, date, message_count, last_updated)
-                VALUES (?, ?, ?, 0, CURRENT_TIMESTAMP)
+                INSERT OR REPLACE INTO daily_messages (guild_id, guild_name, user_id, user_name, date, message_count, last_updated)
+                VALUES (?, ?, ?, ?, ?, 0, CURRENT_TIMESTAMP)
             `;
 
-      this.db.run(query, [guildId, userId, date], function (err) {
+      this.db.run(query, [guildId, guildName, userId, userName, date], function (err) {
         if (err) {
           console.error("Error resetting message count:", err.message);
           reject(err);

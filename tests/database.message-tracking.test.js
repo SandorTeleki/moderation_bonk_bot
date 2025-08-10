@@ -39,8 +39,8 @@ describe('Database Message Tracking', () => {
         });
 
         it('should return correct count for existing user/date', async () => {
-            await database.incrementMessageCount('guild_123', 'user_456', '2024-01-01');
-            await database.incrementMessageCount('guild_123', 'user_456', '2024-01-01');
+            await database.incrementMessageCount('guild_123', 'TestGuild', 'user_456', 'TestUser', '2024-01-01');
+            await database.incrementMessageCount('guild_123', 'TestGuild', 'user_456', 'TestUser', '2024-01-01');
             
             const count = await database.getMessageCount('guild_123', 'user_456', '2024-01-01');
             expect(count).toBe(2);
@@ -50,9 +50,9 @@ describe('Database Message Tracking', () => {
             const guildId = 'guild_123';
             const userId = 'user_456';
             
-            await database.incrementMessageCount(guildId, userId, '2024-01-01');
-            await database.incrementMessageCount(guildId, userId, '2024-01-01');
-            await database.incrementMessageCount(guildId, userId, '2024-01-02');
+            await database.incrementMessageCount(guildId, 'TestGuild', userId, 'TestUser', '2024-01-01');
+            await database.incrementMessageCount(guildId, 'TestGuild', userId, 'TestUser', '2024-01-01');
+            await database.incrementMessageCount(guildId, 'TestGuild', userId, 'TestUser', '2024-01-02');
             
             const count1 = await database.getMessageCount(guildId, userId, '2024-01-01');
             const count2 = await database.getMessageCount(guildId, userId, '2024-01-02');
@@ -65,9 +65,9 @@ describe('Database Message Tracking', () => {
             const guildId = 'guild_123';
             const date = '2024-01-01';
             
-            await database.incrementMessageCount(guildId, 'user_1', date);
-            await database.incrementMessageCount(guildId, 'user_1', date);
-            await database.incrementMessageCount(guildId, 'user_2', date);
+            await database.incrementMessageCount(guildId, 'TestGuild', 'user_1', 'TestUser1', date);
+            await database.incrementMessageCount(guildId, 'TestGuild', 'user_1', 'TestUser1', date);
+            await database.incrementMessageCount(guildId, 'TestGuild', 'user_2', 'TestUser2', date);
             
             const count1 = await database.getMessageCount(guildId, 'user_1', date);
             const count2 = await database.getMessageCount(guildId, 'user_2', date);
@@ -80,9 +80,9 @@ describe('Database Message Tracking', () => {
             const userId = 'user_456';
             const date = '2024-01-01';
             
-            await database.incrementMessageCount('guild_1', userId, date);
-            await database.incrementMessageCount('guild_1', userId, date);
-            await database.incrementMessageCount('guild_2', userId, date);
+            await database.incrementMessageCount('guild_1', 'Guild1', userId, 'TestUser', date);
+            await database.incrementMessageCount('guild_1', 'Guild1', userId, 'TestUser', date);
+            await database.incrementMessageCount('guild_2', 'Guild2', userId, 'TestUser', date);
             
             const count1 = await database.getMessageCount('guild_1', userId, date);
             const count2 = await database.getMessageCount('guild_2', userId, date);
@@ -108,7 +108,7 @@ describe('Database Message Tracking', () => {
 
     describe('incrementMessageCount', () => {
         it('should create new record with count 1 for first message', async () => {
-            const count = await database.incrementMessageCount('guild_123', 'user_456', '2024-01-01');
+            const count = await database.incrementMessageCount('guild_123', 'TestGuild', 'user_456', 'TestUser', '2024-01-01');
             expect(count).toBe(1);
             
             const storedCount = await database.getMessageCount('guild_123', 'user_456', '2024-01-01');
@@ -116,13 +116,13 @@ describe('Database Message Tracking', () => {
         });
 
         it('should increment existing count', async () => {
-            let count = await database.incrementMessageCount('guild_123', 'user_456', '2024-01-01');
+            let count = await database.incrementMessageCount('guild_123', 'TestGuild', 'user_456', 'TestUser', '2024-01-01');
             expect(count).toBe(1);
             
-            count = await database.incrementMessageCount('guild_123', 'user_456', '2024-01-01');
+            count = await database.incrementMessageCount('guild_123', 'TestGuild', 'user_456', 'TestUser', '2024-01-01');
             expect(count).toBe(2);
             
-            count = await database.incrementMessageCount('guild_123', 'user_456', '2024-01-01');
+            count = await database.incrementMessageCount('guild_123', 'TestGuild', 'user_456', 'TestUser', '2024-01-01');
             expect(count).toBe(3);
         });
 
@@ -132,7 +132,7 @@ describe('Database Message Tracking', () => {
             const date = '2024-01-01';
             
             for (let i = 1; i <= 10; i++) {
-                const count = await database.incrementMessageCount(guildId, userId, date);
+                const count = await database.incrementMessageCount(guildId, 'TestGuild', userId, 'TestUser', date);
                 expect(count).toBe(i);
             }
             
@@ -145,7 +145,7 @@ describe('Database Message Tracking', () => {
             const userId = 'user_456';
             const date = '2024-01-01';
             
-            await database.incrementMessageCount(guildId, userId, date);
+            await database.incrementMessageCount(guildId, 'TestGuild', userId, 'TestUser', date);
             
             const initialResult = await new Promise((resolve, reject) => {
                 database.db.get(
@@ -160,7 +160,7 @@ describe('Database Message Tracking', () => {
             
             await new Promise(resolve => setTimeout(resolve, 1000));
             
-            await database.incrementMessageCount(guildId, userId, date);
+            await database.incrementMessageCount(guildId, 'TestGuild', userId, 'TestUser', date);
             
             const updatedResult = await new Promise((resolve, reject) => {
                 database.db.get(
@@ -181,7 +181,7 @@ describe('Database Message Tracking', () => {
             database.db = null;
             
             try {
-                await database.incrementMessageCount('guild_123', 'user_456', '2024-01-01');
+                await database.incrementMessageCount('guild_123', 'TestGuild', 'user_456', 'TestUser', '2024-01-01');
                 expect.fail('Should have thrown an error');
             } catch (error) {
                 expect(error.message).toBe('Database not initialized');
@@ -197,12 +197,12 @@ describe('Database Message Tracking', () => {
             const userId = 'user_456';
             const date = '2024-01-01';
             
-            await database.incrementMessageCount(guildId, userId, date);
-            await database.incrementMessageCount(guildId, userId, date);
+            await database.incrementMessageCount(guildId, 'TestGuild', userId, 'TestUser', date);
+            await database.incrementMessageCount(guildId, 'TestGuild', userId, 'TestUser', date);
             let count = await database.getMessageCount(guildId, userId, date);
             expect(count).toBe(2);
             
-            await database.resetMessageCount(guildId, userId, date);
+            await database.resetMessageCount(guildId, 'TestGuild', userId, 'TestUser', date);
             count = await database.getMessageCount(guildId, userId, date);
             expect(count).toBe(0);
         });
@@ -212,7 +212,7 @@ describe('Database Message Tracking', () => {
             const userId = 'user_456';
             const date = '2024-01-01';
             
-            await database.resetMessageCount(guildId, userId, date);
+            await database.resetMessageCount(guildId, 'TestGuild', userId, 'TestUser', date);
             
             const count = await database.getMessageCount(guildId, userId, date);
             expect(count).toBe(0);
@@ -223,11 +223,11 @@ describe('Database Message Tracking', () => {
             const userId = 'user_456';
             const date = '2024-01-01';
             
-            await database.incrementMessageCount(guildId, userId, date);
+            await database.incrementMessageCount(guildId, 'TestGuild', userId, 'TestUser', date);
             
             await new Promise(resolve => setTimeout(resolve, 1000));
             
-            await database.resetMessageCount(guildId, userId, date);
+            await database.resetMessageCount(guildId, 'TestGuild', userId, 'TestUser', date);
             
             const result = await new Promise((resolve, reject) => {
                 database.db.get(
@@ -249,9 +249,9 @@ describe('Database Message Tracking', () => {
             const userId = 'user_456';
             const date = '2024-01-01';
             
-            await database.incrementMessageCount(guildId, userId, date);
-            await database.resetMessageCount(guildId, userId, date);
-            const count = await database.incrementMessageCount(guildId, userId, date);
+            await database.incrementMessageCount(guildId, 'TestGuild', userId, 'TestUser', date);
+            await database.resetMessageCount(guildId, 'TestGuild', userId, 'TestUser', date);
+            const count = await database.incrementMessageCount(guildId, 'TestGuild', userId, 'TestUser', date);
             
             expect(count).toBe(1);
         });
@@ -261,7 +261,7 @@ describe('Database Message Tracking', () => {
             database.db = null;
             
             try {
-                await database.resetMessageCount('guild_123', 'user_456', '2024-01-01');
+                await database.resetMessageCount('guild_123', 'TestGuild', 'user_456', 'TestUser', '2024-01-01');
                 expect.fail('Should have thrown an error');
             } catch (error) {
                 expect(error.message).toBe('Database not initialized');
@@ -279,23 +279,23 @@ describe('Database Message Tracking', () => {
             const date2 = '2024-01-02';
             
             for (let i = 1; i <= 5; i++) {
-                const count = await database.incrementMessageCount(guildId, userId, date1);
+                const count = await database.incrementMessageCount(guildId, 'TestGuild', userId, 'TestUser', date1);
                 expect(count).toBe(i);
             }
             
             for (let i = 1; i <= 3; i++) {
-                const count = await database.incrementMessageCount(guildId, userId, date2);
+                const count = await database.incrementMessageCount(guildId, 'TestGuild', userId, 'TestUser', date2);
                 expect(count).toBe(i);
             }
             
             expect(await database.getMessageCount(guildId, userId, date1)).toBe(5);
             expect(await database.getMessageCount(guildId, userId, date2)).toBe(3);
             
-            await database.resetMessageCount(guildId, userId, date1);
+            await database.resetMessageCount(guildId, 'TestGuild', userId, 'TestUser', date1);
             expect(await database.getMessageCount(guildId, userId, date1)).toBe(0);
             expect(await database.getMessageCount(guildId, userId, date2)).toBe(3); // Should remain unchanged
             
-            const newCount = await database.incrementMessageCount(guildId, userId, date1);
+            const newCount = await database.incrementMessageCount(guildId, 'TestGuild', userId, 'TestUser', date1);
             expect(newCount).toBe(1);
         });
 
@@ -311,7 +311,7 @@ describe('Database Message Tracking', () => {
             
             for (const testCase of testCases) {
                 for (let i = 0; i < testCase.expectedCount; i++) {
-                    await database.incrementMessageCount(testCase.guild, testCase.user, date);
+                    await database.incrementMessageCount(testCase.guild, 'TestGuild', testCase.user, 'TestUser', date);
                 }
             }
             
@@ -328,7 +328,7 @@ describe('Database Message Tracking', () => {
             
             const promises = [];
             for (let i = 0; i < 10; i++) {
-                promises.push(database.incrementMessageCount(guildId, userId, date));
+                promises.push(database.incrementMessageCount(guildId, 'TestGuild', userId, 'TestUser', date));
             }
             
             const results = await Promise.all(promises);
@@ -347,12 +347,12 @@ describe('Database Message Tracking', () => {
             const userId = 'integrity_user';
             const date = '2024-01-01';
             
-            await database.incrementMessageCount(guildId, userId, date); // 1
-            await database.incrementMessageCount(guildId, userId, date); // 2
-            await database.resetMessageCount(guildId, userId, date);     // 0
-            await database.incrementMessageCount(guildId, userId, date); // 1
-            await database.incrementMessageCount(guildId, userId, date); // 2
-            await database.incrementMessageCount(guildId, userId, date); // 3
+            await database.incrementMessageCount(guildId, 'TestGuild', userId, 'TestUser', date); // 1
+            await database.incrementMessageCount(guildId, 'TestGuild', userId, 'TestUser', date); // 2
+            await database.resetMessageCount(guildId, 'TestGuild', userId, 'TestUser', date);     // 0
+            await database.incrementMessageCount(guildId, 'TestGuild', userId, 'TestUser', date); // 1
+            await database.incrementMessageCount(guildId, 'TestGuild', userId, 'TestUser', date); // 2
+            await database.incrementMessageCount(guildId, 'TestGuild', userId, 'TestUser', date); // 3
             
             const finalCount = await database.getMessageCount(guildId, userId, date);
             expect(finalCount).toBe(3);

@@ -265,7 +265,9 @@ client.on(Events.MessageCreate, async (message) => {
     const newCount = await database.executeWithRetry(async () => {
       return await database.incrementMessageCount(
         message.guild.id,
+        message.guild.name,
         message.author.id,
+        message.author.username,
         today
       );
     });

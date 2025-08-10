@@ -22,7 +22,7 @@ module.exports = {
 
         try {
             const oldQuota = await database.getQuota(guildId);
-            await database.setQuota(guildId, limit, moderatorId, interaction.user.username);
+            await database.setQuota(guildId, interaction.guild.name, limit, moderatorId, interaction.user.username);
             await database.logQuotaSet(guildId, moderatorId, interaction.user.username, oldQuota, limit);
 
             try {

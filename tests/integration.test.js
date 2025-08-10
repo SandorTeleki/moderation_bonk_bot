@@ -38,7 +38,7 @@ describe('Integration Tests - Database Persistence', () => {
     const moderatorId = 'moderator-456';
     const quotaLimit = 50;
 
-    await database.setQuota(guildId, quotaLimit, moderatorId, 'TestModerator');
+    await database.setQuota(guildId, 'TestGuild', quotaLimit, moderatorId, 'TestModerator');
     
     const quota1 = await database.getQuota(guildId);
     expect(quota1).toBe(quotaLimit);
@@ -60,9 +60,9 @@ describe('Integration Tests - Database Persistence', () => {
     const userId = 'user-456';
     const date = '2024-01-15';
 
-    await database.incrementMessageCount(guildId, userId, date);
-    await database.incrementMessageCount(guildId, userId, date);
-    await database.incrementMessageCount(guildId, userId, date);
+    await database.incrementMessageCount(guildId, 'TestGuild', userId, 'TestUser', date);
+    await database.incrementMessageCount(guildId, 'TestGuild', userId, 'TestUser', date);
+    await database.incrementMessageCount(guildId, 'TestGuild', userId, 'TestUser', date);
     
     const count1 = await database.getMessageCount(guildId, userId, date);
     expect(count1).toBe(3);
@@ -104,7 +104,7 @@ describe('Integration Tests - Database Persistence', () => {
     const guildId = 'test-guild-123';
     const quotaLimit = 30;
 
-    await database.setQuota(guildId, quotaLimit, 'moderator-123', 'TestModerator');
+    await database.setQuota(guildId, 'TestGuild', quotaLimit, 'moderator-123', 'TestModerator');
     await database.close();
 
     fs.writeFileSync(testDbPath, 'corrupted data');
@@ -114,7 +114,7 @@ describe('Integration Tests - Database Persistence', () => {
     
     await expect(newDatabase.initializeDatabase()).resolves.not.toThrow();
 
-    await newDatabase.setQuota(guildId, 40, 'moderator-456', 'TestModerator');
+    await newDatabase.setQuota(guildId, 'TestGuild', 40, 'moderator-456', 'TestModerator');
     const quota = await newDatabase.getQuota(guildId);
     expect(quota).toBe(40);
 
@@ -128,7 +128,7 @@ describe('Integration Tests - Database Persistence', () => {
 
     const promises = [];
     for (let i = 0; i < 10; i++) {
-      promises.push(database.incrementMessageCount(guildId, userId, date));
+      promises.push(database.incrementMessageCount(guildId, 'TestGuild', userId, 'TestUser', date));
     }
 
     const results = await Promise.all(promises);
@@ -141,9 +141,9 @@ describe('Integration Tests - Database Persistence', () => {
   });
 
   it('should load all quotas correctly on startup', async () => {
-    await database.setQuota('guild-1', 25, 'mod-1', 'TestMod1');
-    await database.setQuota('guild-2', 50, 'mod-2', 'TestMod2');
-    await database.setQuota('guild-3', 0, 'mod-3', 'TestMod3'); // Disabled
+    await database.setQuota('guild-1', 'Guild1', 25, 'mod-1', 'TestMod1');
+    await database.setQuota('guild-2', 'Guild2', 50, 'mod-2', 'TestMod2');
+    await database.setQuota('guild-3', 'Guild3', 0, 'mod-3', 'TestMod3'); // Disabled
 
     const quotaMap = await database.loadAllQuotas();
 

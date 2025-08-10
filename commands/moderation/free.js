@@ -72,7 +72,9 @@ module.exports = {
       try {
         await database.resetMessageCount(
           interaction.guild.id,
+          interaction.guild.name,
           targetUser.id,
+          targetUser.username,
           today
         );
         console.log(

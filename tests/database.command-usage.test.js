@@ -70,10 +70,10 @@ describe('Database Command Usage Tracking', () => {
 
     describe('integration with other operations', () => {
         it('should track command usage alongside other database operations', async () => {
-            await database.setQuota('test_guild', 25, 'mod_123', 'TestMod');
+            await database.setQuota('test_guild', 'TestGuild', 25, 'mod_123', 'TestMod');
             await database.incrementCommandUsage('dailyMessageQuota');
             
-            await database.incrementMessageCount('test_guild', 'user_456', '2025-01-01');
+            await database.incrementMessageCount('test_guild', 'TestGuild', 'user_456', 'TestUser', '2025-01-01');
             await database.incrementCommandUsage('watchlist');
             
             await database.logAction('test_guild', 'test_action', 'mod_123', 'TestMod', 'user_456', 'TestUser', {});
